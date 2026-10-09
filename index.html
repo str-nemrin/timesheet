@@ -1,0 +1,1377 @@
+<!doctype html>
+<html lang="km">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Time Sheet</title>
+<meta name="description" content="Time Sheet — កាលវិភាគធ្វើការ Working day / Day off / ច្បាប់">
+<meta name="theme-color" content="#1f3a8a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Time Sheet">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<style>
+:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;font:14px/1.5 system-ui,sans-serif;background:#f6f7f9}
+img{max-width:100%}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@400;500;600;700&family=Moul&display=swap">
+<style>
+/* Layout: one ledger column — header, month summary, three section tabs (Day off / Working day / ច្បាប់), the calendar as the shared working surface, then the active section's own list and settings. A tray for the active section docks to the bottom when days are picked. */
+:root{
+  --paper:#e9eff8; --card:#ffffff; --band1:#1f3a8a; --band2:#2f5bb7; --band-ink:#ffffff; --band-sub:#d6e0f7; --ink:#1b2333; --muted:#5d6779; --line:#dde2ea;
+  --accent:#23409a; --accent-soft:#e6ebf8;
+  --off:#c0352b; --off-soft:#fbe9e7;
+  --weekend:#8a93a3; --weekend-soft:#eef0f3;
+  --leave:#a8650a; --leave-soft:#fdf1dc;
+  --mission:#16775a; --mission-soft:#e1f3ec;
+  --font-display:"Moul","Kantumruy Pro",serif;
+  --font-body:"Kantumruy Pro","Khmer OS Battambang","Noto Sans Khmer",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#0c1220; --card:#161f30; --band1:#16244d; --band2:#1f3a78; --band-ink:#eef2ff; --band-sub:#b7c4e8; --ink:#e7ebf2; --muted:#9aa4b6; --line:#2a3242;
+  --accent:#8ea8ff; --accent-soft:#1f2a47;
+  --off:#ff8a7d; --off-soft:#3a1f1d;
+  --weekend:#7d8698; --weekend-soft:#1d2330;
+  --leave:#f0b04d; --leave-soft:#352a17;
+  --mission:#5fd3a8; --mission-soft:#163027; color-scheme:dark }}
+:root[data-theme="dark"]{
+  --paper:#0c1220; --card:#161f30; --band1:#16244d; --band2:#1f3a78; --band-ink:#eef2ff; --band-sub:#b7c4e8; --ink:#e7ebf2; --muted:#9aa4b6; --line:#2a3242;
+  --accent:#8ea8ff; --accent-soft:#1f2a47;
+  --off:#ff8a7d; --off-soft:#3a1f1d;
+  --weekend:#7d8698; --weekend-soft:#1d2330;
+  --leave:#f0b04d; --leave-soft:#352a17;
+  --mission:#5fd3a8; --mission-soft:#163027; color-scheme:dark }
+
+*{box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font-family:var(--font-body);font-size:15px;line-height:1.6}
+.wrap{max-width:880px;margin:0 auto;padding-inline:16px;padding-block:20px 52vh;display:flex;flex-direction:column;gap:16px}
+h1,h2{font-family:var(--font-display);font-weight:400;margin:0;text-wrap:balance}
+h1{font-size:1.45rem}
+h2{font-size:.98rem}
+h3{font-size:.9rem;margin:0;font-weight:600}
+.sub{color:var(--muted);font-size:.85rem;margin:0}
+button,select,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+select,input[type=text],input[type=number],input:not([type]){border:1px solid var(--line);background:var(--card);border-radius:8px;padding:6px 10px;min-width:0}
+
+header{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;justify-content:space-between}
+.staffbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.btn{border:1px solid var(--line);background:var(--card);border-radius:8px;padding:6px 12px;font-size:.88rem}
+.btn.primary{background:var(--sec,var(--accent));border-color:var(--sec,var(--accent));color:var(--card);font-weight:600}
+.btn.danger{color:var(--off)}
+.btn:disabled{opacity:.45;cursor:default}
+
+.monthnav{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.monthnav .label{font-weight:600;font-size:1.1rem;min-width:9.5em;text-align:center}
+.iconbtn{width:2.6rem;height:2.6rem;border-radius:50%;border:1px solid var(--line);background:var(--card);font-size:1.1rem;line-height:1}
+
+.summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.summary div{background:var(--card);padding:10px 12px;display:flex;flex-direction:column;gap:2px}
+.summary b{font-size:1.5rem;font-variant-numeric:tabular-nums;font-weight:700;line-height:1.2}
+.summary span{font-size:.78rem;color:var(--muted)}
+.k-work b{color:var(--accent)} .k-off b{color:var(--off)} .k-leave b{color:var(--leave)}
+@media (max-width:520px){.summary{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* three sections */
+.sections{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.sec{border:1px solid var(--line);background:var(--card);border-radius:12px;padding:10px 12px;text-align:left;display:flex;flex-direction:column;gap:2px;border-top:4px solid var(--c)}
+.sec .no{font-size:.72rem;color:var(--muted);letter-spacing:.04em}
+.sec .nm{font-weight:700;font-size:1rem;color:var(--c)}
+.sec .ct{font-size:.76rem;color:var(--muted)}
+.sec[aria-selected="true"]{background:var(--cs);border-color:var(--c)}
+.sec.s-off{--c:var(--off);--cs:var(--off-soft)}
+.sec.s-work{--c:var(--accent);--cs:var(--accent-soft)}
+.sec.s-leave{--c:var(--leave);--cs:var(--leave-soft)}
+@media (max-width:460px){.sec{padding:8px}.sec .nm{font-size:.9rem}}
+
+.calcard{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px}
+.caltools{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;margin-bottom:10px}
+.hint{font-size:.82rem;color:var(--muted);margin:0}
+.toggle{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden}
+.toggle button{border:0;background:transparent;padding:5px 12px;font-size:.84rem}
+.toggle button[aria-pressed="true"]{background:var(--ink);color:var(--card)}
+.legend{display:flex;flex-wrap:wrap;gap:10px;font-size:.76rem;color:var(--muted);margin-top:10px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px}
+
+.grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.dow{text-align:center;font-size:.75rem;color:var(--muted);padding-bottom:2px;font-weight:600}
+.dow.we{color:var(--weekend)}
+.day{position:relative;min-height:70px;border:1px solid var(--line);border-radius:8px;background:var(--card);padding:4px 5px;text-align:left;display:flex;flex-direction:column;gap:2px;overflow:hidden}
+.day .n{font-weight:700;font-variant-numeric:tabular-nums;font-size:.95rem;line-height:1.2}
+.day .t{font-size:.64rem;line-height:1.3;color:var(--muted);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.day.blank{border:0;background:transparent;pointer-events:none}
+.day.weekend{background:var(--weekend-soft)} .day.weekend .n{color:var(--weekend)}
+.day.off{background:var(--off-soft);border-color:transparent} .day.off .n,.day.off .t{color:var(--off)}
+.day.mark-work{box-shadow:inset 0 -3px 0 var(--accent)} .day.mark-work .t{color:var(--accent)}
+.day.today .n{text-decoration:underline;text-underline-offset:3px}
+.day.sel{outline:3px solid var(--sec);outline-offset:-3px}
+.day.sel::after{content:"✓";position:absolute;top:3px;right:5px;font-size:.75rem;font-weight:700;color:var(--sec)}
+.chip{align-self:flex-start;font-size:.63rem;font-weight:600;border-radius:4px;padding:0 5px;line-height:1.6;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chip.leave{background:var(--leave-soft);color:var(--leave)}
+.chip.mission{background:var(--mission-soft);color:var(--mission)}
+@media (max-width:520px){.day{min-height:58px;padding:3px}.day .t{-webkit-line-clamp:1}}
+
+.panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:10px}
+.panel>header{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.rows{display:flex;flex-direction:column}
+.row{display:flex;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--line);font-size:.9rem;flex-wrap:wrap}
+.row:first-child{border-top:0}
+.row .d{font-variant-numeric:tabular-nums;font-weight:600;min-width:7.5em}
+.row .m{flex:1;min-width:10em;color:var(--muted);overflow-wrap:anywhere}
+.tag{font-size:.7rem;border:1px solid var(--line);border-radius:999px;padding:0 8px;color:var(--muted);white-space:nowrap}
+.empty{color:var(--muted);font-size:.88rem;margin:0}
+
+.bal{width:100%;border-collapse:collapse;font-size:.86rem}
+.balwrap{overflow-x:auto}
+.bal th,.bal td{padding:7px 6px;border-top:1px solid var(--line);text-align:left;vertical-align:top}
+.bal th{font-size:.74rem;color:var(--muted);font-weight:600;border-top:0}
+.bal td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
+.bal .law{display:block;font-size:.72rem;color:var(--muted)}
+.bal input[type=number]{width:4.5em;padding:3px 6px}
+.over{color:var(--off);font-weight:700}
+.bar{height:5px;border-radius:3px;background:var(--line);margin-top:4px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--leave)}
+.addtype{display:flex;flex-wrap:wrap;gap:8px;align-items:center;border-top:1px dashed var(--line);padding-top:10px}
+.addtype input:not([type]){flex:1;min-width:10em}
+.check{display:inline-flex;gap:6px;align-items:center;font-size:.85rem}
+
+.range{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.quick{display:flex;flex-wrap:wrap;gap:6px}
+.quick .btn{font-size:.8rem;padding:3px 10px;border-radius:999px}
+.quick .btn[aria-pressed="true"]{background:var(--ink);color:var(--card);border-color:var(--ink)}
+.ov{width:100%;border-collapse:collapse;font-size:.88rem;min-width:520px}
+.ov th,.ov td{padding:7px 8px;border-top:1px solid var(--line);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.ov th:first-child,.ov td:first-child{text-align:left}
+.ov thead th{font-size:.74rem;color:var(--muted);font-weight:600;border-top:0;vertical-align:bottom}
+.ov thead th.c-work{color:var(--accent)} .ov thead th.c-off{color:var(--off)} .ov thead th.c-leave{color:var(--leave)}
+.ov tbody tr{cursor:pointer}
+.ov tbody tr:hover td{background:var(--paper)}
+.ov tbody tr.cur td{background:var(--accent-soft)}
+.ov tbody tr.cur td:first-child{font-weight:700}
+.ov tfoot td{border-top:2px solid var(--ink);font-weight:700}
+.ov td.z{color:var(--muted)}
+.sumtiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.sumtiles div{border:1px solid var(--line);border-radius:8px;padding:8px 10px;display:flex;flex-direction:column}
+.sumtiles b{font-size:1.3rem;font-variant-numeric:tabular-nums;line-height:1.2}
+.sumtiles span{font-size:.74rem;color:var(--muted)}
+@media (max-width:520px){.sumtiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.pill{font-size:.74rem;font-weight:600;border-radius:999px;padding:1px 9px}
+.p-work,.p-mission{background:var(--accent-soft);color:var(--accent)}
+.p-off{background:var(--off-soft);color:var(--off)}
+.p-leave{background:var(--leave-soft);color:var(--leave)}
+.ov td.det{text-align:left;white-space:normal;min-width:12em}
+.ov tbody tr{cursor:default}
+#ssTable th,#ssTable td{text-align:left}
+
+.groups{display:flex;flex-direction:column;gap:14px}
+.grp{border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.grp .gh{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline;padding:8px 12px;background:var(--gs);border-bottom:1px solid var(--line)}
+.grp .gh h3{color:var(--gc);font-size:1rem;font-weight:700}
+.grp .gh span{font-size:.8rem;color:var(--muted)}
+.grp .empty{padding:10px 12px}
+.grp .balwrap{padding:0 12px}
+.g-work{--gc:var(--accent);--gs:var(--accent-soft)}
+.g-off{--gc:var(--off);--gs:var(--off-soft)}
+.g-leave{--gc:var(--leave);--gs:var(--leave-soft)}
+.gt{min-width:420px}
+.gt th,.gt td{text-align:left!important}
+.gt tbody tr:first-child td{border-top:0}
+.otc{color:var(--mission);font-weight:600}
+.chip.ot{background:var(--mission-soft);color:var(--mission)}
+.otbox{border-top:1px dashed var(--line);padding-top:8px;display:flex;flex-direction:column;gap:8px}
+.tri{width:100%;border-collapse:collapse;font-size:.86rem;table-layout:fixed}
+.tri th,.tri td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+.tri th{font-size:.95rem;font-weight:700}
+.tri th span{display:block;font-size:.72rem;font-weight:400;color:var(--muted)}
+.tri .no{width:2.9em;padding-inline:2px;text-align:center;color:var(--muted);font-variant-numeric:tabular-nums}
+.tri th.h-work{color:var(--accent);background:var(--accent-soft)}
+.tri th.h-off{color:var(--off);background:var(--off-soft)}
+.tri th.h-leave{color:var(--leave);background:var(--leave-soft)}
+.tri td b{display:block;font-weight:600;font-variant-numeric:tabular-nums}
+.tri .cd{display:block;font-size:.74rem;color:var(--muted);line-height:1.4;overflow-wrap:anywhere}
+.tri .cd.otc{color:var(--mission);font-weight:600}
+@media (max-width:520px){.tri{font-size:.78rem}.tri th,.tri td{padding:5px 4px}.tri th{font-size:.8rem}.tri .cd{font-size:.68rem}}
+[hidden]{display:none!important}
+.tray{max-height:48vh;overflow-y:auto}
+.tray.mini .in>div:not(:first-child),.tray.mini .note{display:none!important}
+.day.pk-off::after,.day.pk-work::after,.day.pk-leave::after{content:"";position:absolute;top:5px;right:5px;width:8px;height:8px;border-radius:50%}
+.day.pk-off::after{background:var(--off)} .day.pk-work::after{background:var(--accent)} .day.pk-leave::after{background:var(--leave)}
+.tri tfoot td{border-top:2px solid var(--ink);background:var(--paper)}
+.tri tfoot td b{font-size:1rem}
+.tri tfoot td.c-work b{color:var(--accent)} .tri tfoot td.c-off b{color:var(--off)} .tri tfoot td.c-leave b{color:var(--leave)}
+.tri tfoot .no{font-weight:700;color:var(--ink)}
+/* ---- colour pass: one hue per category, solid headers, tinted cells, strong totals ---- */
+.tri{border:1px solid var(--line);border-radius:10px;overflow:hidden;border-collapse:separate;border-spacing:0}
+.tri th,.tri td{border:0;border-right:1px solid var(--line);border-bottom:1px solid var(--line)}
+.tri tr>*:last-child{border-right:0}
+.tri thead th{border-bottom:0}
+.tri th.h-work{background:var(--accent);color:var(--card)}
+.tri th.h-off{background:var(--off);color:var(--card)}
+.tri th.h-leave{background:var(--leave);color:var(--card)}
+.tri thead th span{color:inherit;opacity:.85}
+.tri thead th.no{background:var(--ink);color:var(--card)}
+.tri tbody td.c-work:not(:empty){background:color-mix(in srgb,var(--accent-soft) 70%,var(--card))}
+.tri tbody td.c-off:not(:empty){background:color-mix(in srgb,var(--off-soft) 70%,var(--card))}
+.tri tbody td.c-leave:not(:empty){background:color-mix(in srgb,var(--leave-soft) 80%,var(--card))}
+.tri tbody td.c-work b{color:var(--accent)} .tri tbody td.c-off b{color:var(--off)} .tri tbody td.c-leave b{color:var(--leave)}
+.tri tbody td.c-work.rest{background:var(--mission-soft)} .tri tbody td.c-work.rest b{color:var(--mission)}
+.tri tbody tr:nth-child(even) td.no{background:var(--paper)}
+.tri tfoot td{border-top:0;border-bottom:0}
+.tri tfoot td.no{background:var(--ink);color:var(--card)}
+.tri tfoot td.c-work{background:var(--accent-soft)} .tri tfoot td.c-off{background:var(--off-soft)} .tri tfoot td.c-leave{background:var(--leave-soft)}
+.tri tfoot td b{font-size:1.15rem}
+.tag-rest{display:inline-block;margin-top:2px;font-size:.66rem;font-weight:700;border-radius:4px;padding:0 5px;background:var(--mission);color:var(--card)}
+/* calendar: picked days get the section's own tint */
+.day.sel{background:color-mix(in srgb,var(--sec) 16%,var(--card))}
+.day.pk-work{background:var(--accent-soft)} .day.pk-leave{background:var(--leave-soft)} .day.pk-off{background:var(--off-soft)}
+.day.pk-work .n{color:var(--accent)} .day.pk-leave .n{color:var(--leave)}
+body{background:radial-gradient(1200px 500px at 50% -120px,color-mix(in srgb,var(--band2) 22%,transparent),transparent 70%),var(--paper);background-attachment:fixed}
+.topfix>header{background:linear-gradient(135deg,var(--band1),var(--band2));color:var(--band-ink);border-radius:14px;padding:16px 18px;box-shadow:0 8px 24px color-mix(in srgb,var(--band1) 25%,transparent)}
+.topfix>header h1{color:var(--band-ink)}
+.topfix>header .sub{color:var(--band-sub)}
+.topfix>header select,.topfix>header input{background:color-mix(in srgb,var(--card) 92%,transparent);color:var(--ink);border-color:transparent}
+.topfix>header .btn{background:transparent;color:var(--band-ink);border-color:color-mix(in srgb,var(--band-ink) 45%,transparent)}
+.topfix>header .btn.danger{color:#ffd2cc}
+.calcard,.panel,.summary,.sec{box-shadow:0 1px 3px color-mix(in srgb,var(--band1) 10%,transparent)}
+.monthnav .label{color:var(--band1)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .monthnav .label{color:var(--ink)}}
+:root[data-theme="dark"] .monthnav .label{color:var(--ink)}
+/* compact type scale */
+html{font-size:calc(13.5px * var(--z,1))}
+body{font-size:.963rem;line-height:1.55}
+h1{font-size:1.25rem} h2{font-size:.92rem} h3{font-size:.85rem}
+.topfix>header h1{font-family:var(--font-display);letter-spacing:.01em}
+.summary b{font-size:1.25rem} .summary div{padding:8px 10px}
+.sec .nm{font-size:.92rem} .sec{padding:8px 10px}
+.monthnav .label{font-size:1rem}
+.day{min-height:4.4rem} .day .n{font-size:.88rem}
+@media (max-width:520px){.day{min-height:3.7rem}.day .n{font-size:.82rem}.day .t{font-size:.6rem}}
+.tri{font-size:.8rem} .tri th{font-size:.84rem} .tri .cd{font-size:.68rem}
+.tri tfoot td b{font-size:.98rem}
+@media (max-width:520px){.tri{font-size:.74rem}.tri th{font-size:.76rem}.tri .cd{font-size:.64rem}}
+.btn{font-size:.82rem;padding:5px 10px}
+.tray .count{font-size:.9rem}
+.zoom{display:inline-flex;align-items:center;border:1px solid color-mix(in srgb,var(--band-ink) 45%,transparent);border-radius:999px;overflow:hidden}
+.zoom button{border:0;background:transparent;color:var(--band-ink);min-width:2.4rem;height:2.2rem;font-size:1rem;font-weight:700}
+.zoom button:disabled{opacity:.35;cursor:default}
+.zoom #zReset{font-size:.78rem;font-weight:600;min-width:3.4rem;border-inline:1px solid color-mix(in srgb,var(--band-ink) 30%,transparent)}
+.staffbar{min-width:0;max-width:100%}
+.staffbar>*{max-width:100%}
+#staffSel{max-width:100%;text-overflow:ellipsis}
+#staffNew{width:10em;max-width:100%;flex:1 1 8em}
+.topfix>header>div{min-width:0;max-width:100%}
+/* compact summary table: everything in em so it follows zoom */
+.tri th,.tri td{padding:.3em .45em!important}
+.tri .no{width:2.4em!important;padding-inline:.15em!important}
+.tri td b{line-height:1.3;white-space:nowrap}
+.tri td b small{font-weight:500;color:var(--muted);font-size:.85em}
+.tri .cd{line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tri thead th{line-height:1.25}
+.tri thead th span{font-size:.72em;white-space:normal}
+.tag-rest{font-size:.62rem}
+.fitbtn{border-color:var(--accent);color:var(--accent);font-weight:600}
+/* no clipped text: wrap instead of cutting, Khmer-safe line height */
+.tri td b{white-space:normal!important;line-height:1.5}
+.tri .cd{white-space:normal!important;overflow:visible!important;text-overflow:clip!important;line-height:1.5}
+.tri thead th{line-height:1.5}
+.tri td,.tri th{overflow:visible}
+.tri .no{width:3.2em!important;padding-inline:.2em!important;white-space:nowrap;font-size:.92em}
+.tri tfoot td.no{font-size:.85em}
+.tag-rest{line-height:1.6}
+.period{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--paper)}
+.period .plabel{font-weight:700;font-size:.85rem;color:var(--accent);margin-right:2px}
+.period input[type=date]{padding:4px 6px;font-size:.82rem;max-width:100%}
+.period .btn{font-size:.76rem;padding:3px 9px;border-radius:999px}
+.period .btn[aria-pressed="true"]{background:var(--accent);color:var(--card);border-color:var(--accent)}
+.day.outp{opacity:.4}
+/* ---- clear tap feedback ---- */
+button{transition:transform .12s ease,background-color .15s,color .15s,box-shadow .2s,border-color .15s}
+button:not(:disabled):active{transform:scale(.94)}
+.btn:not(:disabled):hover,.iconbtn:hover{border-color:var(--accent);color:var(--accent)}
+.btn:not(:disabled):active,.iconbtn:active{background:var(--accent);color:var(--card);border-color:var(--accent)}
+.btn.danger:not(:disabled):active{background:var(--off);border-color:var(--off);color:var(--card)}
+/* active section tab: solid colour, white text, lifted */
+.sec{cursor:pointer;transition:transform .15s,background-color .2s,box-shadow .2s}
+.sec[aria-selected="true"]{background:var(--c)!important;border-color:var(--c)!important;transform:translateY(-3px);box-shadow:0 8px 18px color-mix(in srgb,var(--c) 40%,transparent)}
+.sec[aria-selected="true"] .nm,.sec[aria-selected="true"] .no,.sec[aria-selected="true"] .ct{color:var(--card)!important}
+.sec[aria-selected="true"] .nm{font-weight:800}
+.sec[aria-selected="true"]::after{content:"✓";position:absolute;top:8px;right:10px;color:var(--card);font-weight:800}
+.sec{position:relative}
+/* pressed pills */
+.toggle button[aria-pressed="true"],.period .btn[aria-pressed="true"]{font-weight:700}
+/* pulse flash on every tap */
+@keyframes tapPulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--pc,var(--accent)) 70%,transparent)}100%{box-shadow:0 0 0 10px transparent}}
+.tap{animation:tapPulse .45s ease-out}
+.day.tap{--pc:var(--sec)}
+.sec.tap{--pc:var(--c)}
+.day.sel{border-width:2px;font-weight:700}
+.day.sel .n{color:var(--sec)!important}
+@media (prefers-reduced-motion:reduce){button,.sec{transition:none}button:active{transform:none}.tap{animation:none}.sec[aria-selected="true"]{transform:none}}
+.tri col.cno{width:4.6em}
+.tri col.cw{width:42%}
+.tri col.co{width:35%}
+.tri col.cl{width:23%}
+.tri .no{width:auto!important;font-size:1em!important;font-weight:600}
+.tri tfoot td.no{font-size:.9em!important}
+.zoom.theme button{font-size:.78rem;font-weight:600;padding-inline:.6rem;min-width:auto}
+.zoom.theme button+button{border-left:1px solid color-mix(in srgb,var(--band-ink) 30%,transparent)}
+.zoom.theme button[aria-pressed="true"]{background:var(--band-ink);color:var(--band1)}
+html{transition:background-color .25s}
+/* header controls: fixed, larger size that does not shrink with zoom */
+.zoom{height:34px}
+.zoom button{height:34px;min-width:36px;font-size:16px!important;font-weight:700}
+.zoom #zReset{font-size:13px!important;min-width:52px}
+.zoom.theme button{font-size:13px!important;padding-inline:9px;min-width:auto}
+.zoom.theme button .ic{font-size:15px;vertical-align:-1px;margin-right:3px}
+.topfix>header h1{font-size:max(1.3rem,17px)}
+.topfix>header .sub{font-size:max(.85rem,12px)}
+.topfix>header .staffbar{gap:8px}
+/* summary actions + period box: clear boxes and pressed colours */
+#selSummary .quick{gap:8px}
+#selSummary .quick .btn{border-width:2px;border-radius:10px;font-weight:600;padding:6px 12px}
+#ssFit{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+#selMonth{border-color:var(--accent);color:var(--accent)}
+#ssCopy{border-color:var(--mission);color:var(--mission)}
+#ssClearAll{border-color:var(--off);color:var(--off)}
+#ssFit:not(:disabled):active,#selMonth:not(:disabled):active{background:var(--accent);color:var(--card)}
+#ssCopy:not(:disabled):active{background:var(--mission);color:var(--card);border-color:var(--mission)}
+#ssClearAll:not(:disabled):active{background:var(--off);color:var(--card)}
+#selSummary .quick .btn.done{background:var(--mission);border-color:var(--mission);color:var(--card)}
+#selSummary .quick .btn.done::before{content:"✓ "}
+.period{border:2px solid var(--accent)!important;background:var(--accent-soft)!important;border-radius:12px!important;padding:10px 12px!important;gap:8px!important}
+.period .plabel{font-size:.95rem!important}
+.period input[type=date]{border:2px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);font-weight:600;padding:5px 8px}
+.period input[type=date]:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 30%,transparent)}
+.period.custom input[type=date]{border-color:var(--accent);background:var(--card);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 25%,transparent)}
+.period .btn{border:2px solid var(--accent)!important;color:var(--accent);background:var(--card);font-weight:600;border-radius:999px}
+.period .btn[aria-pressed="true"]{background:var(--accent)!important;color:var(--card)!important}
+.period .btn[aria-pressed="true"]::before{content:"✓ "}
+.period .btn:not([aria-pressed="true"]):active{background:var(--accent);color:var(--card)}
+.period{flex-direction:column;align-items:stretch!important;gap:6px!important;padding:8px 10px!important}
+.period .prow{display:flex;align-items:center;gap:5px;flex-wrap:nowrap;min-width:0}
+.period .prow .sub{font-size:.78rem;flex:none}
+.period .plabel{font-size:.82rem!important;flex:none}
+.period input[type=date]{flex:1 1 0;min-width:0;width:0;font-size:.78rem;padding:3px 4px;border-width:1.5px}
+.period .prow .btn{font-size:.74rem;padding:2px 9px;border-width:1.5px!important;white-space:nowrap}
+.abanner{border-radius:12px;padding:10px 12px;font-size:.85rem;line-height:1.55;border:2px solid var(--off);background:var(--off-soft);color:var(--ink)}
+.abanner b{color:var(--off)}
+#ssXlsx{border-color:#1d6f42;color:#1d6f42;background:color-mix(in srgb,#1d6f42 10%,var(--card))}
+#ssXlsx:not(:disabled):active,#ssXlsx.done{background:#1d6f42!important;color:#fff!important;border-color:#1d6f42!important}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) #ssXlsx{border-color:#5fd3a8;color:#5fd3a8}}
+:root[data-theme="dark"] #ssXlsx{border-color:#5fd3a8;color:#5fd3a8}
+.orgrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.orgrow input{flex:1 1 10em;min-width:0;border:1.5px solid var(--line);border-radius:8px;padding:5px 8px;font-weight:600}
+.tri tbody td.c-work.lv{background:var(--leave-soft)!important}
+.tri tbody td.c-work.lv b{color:var(--leave)!important}
+.tag-leave{display:inline-block;margin-top:2px;font-size:.62rem;font-weight:700;border-radius:4px;padding:0 6px;line-height:1.6;background:#f2c200;color:#3a2a00}
+/* section tabs stay visible while scrolling */
+.sections{position:sticky;top:env(safe-area-inset-top,0px);z-index:4;padding-block:6px;margin-block:-6px;background:color-mix(in srgb,var(--paper) 92%,transparent);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.sections .sec[aria-selected="true"]{transform:none}
+/* top block (header + month + tabs) stays fixed; everything below scrolls */
+.sections{position:static!important;margin-block:0!important;padding-block:0!important;background:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+.topfix{position:sticky;top:env(safe-area-inset-top,0px);z-index:6;display:flex;flex-direction:column;gap:10px;padding-block:8px 10px;margin-inline:-16px;padding-inline:16px;background:var(--paper);box-shadow:0 8px 14px -10px color-mix(in srgb,var(--band1) 35%,transparent)}
+.topfix>header{padding:12px 14px!important}
+.topfix .monthnav{gap:6px}
+.panel,.calcard,.summary{scroll-margin-top:calc(var(--tfh,0px) + 8px)}
+.syncst{margin:0;font-size:.82rem;font-weight:600;border-radius:8px;padding:6px 10px}
+.syncst.ok{background:var(--mission-soft);color:var(--mission)}
+.syncst.off{background:var(--paper);color:var(--muted)}
+.syncst.err{background:var(--off-soft);color:var(--off)}
+#syncUrl{font-family:ui-monospace,monospace;font-size:.78rem}
+.tray{position:fixed;left:0;right:0;bottom:0;z-index:5;background:var(--card);border-top:3px solid var(--sec);box-shadow:0 -6px 20px rgba(0,0,0,.1);padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px))}
+.tray .in{max-width:880px;margin:0 auto;display:flex;flex-direction:column;gap:8px}
+.tray .line{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.tray input:not([type]){flex:1;min-width:8em}
+.tray .count{font-weight:700;color:var(--sec)}
+.tray .note{font-size:.78rem;color:var(--muted);margin:0}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(220px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--paper);padding:8px 14px;border-radius:8px;font-size:.88rem;z-index:6;max-width:calc(100% - 32px)}
+.status{font-size:.76rem;color:var(--muted);margin:0}
+@media (prefers-reduced-motion:no-preference){.day{transition:background .12s}}
+</style>
+
+<div class="wrap" id="app">
+  <div class="topfix" id="topfix">
+  <header>
+    <div>
+      <h1>Time Sheet</h1>
+      <p class="sub">កាលវិភាគធ្វើការប្រចាំថ្ងៃ តាមប្រតិទិនថ្ងៃឈប់សម្រាកផ្លូវការ (អនុក្រឹត្យលេខ ១៦៧)</p>
+    </div>
+    <div class="staffbar">
+      <label for="staffSel" class="sub">មន្ត្រី</label>
+      <select id="staffSel"></select>
+      <input id="staffNew" placeholder="ឈ្មោះមន្ត្រីថ្មី" aria-label="ឈ្មោះមន្ត្រីថ្មី" style="width:10em">
+      <button class="btn" id="staffAdd">បន្ថែម</button>
+      <button class="btn danger" id="staffDel" hidden>លុប</button>
+      <div class="zoom" role="group" aria-label="ទំហំអេក្រង់">
+        <button id="zOut" aria-label="បង្រួម">−</button>
+        <button id="zReset" aria-label="ទំហំដើម">១០០%</button>
+        <button id="zIn" aria-label="ពង្រីក">+</button>
+      </div>
+      <div class="zoom theme" role="group" aria-label="ពន្លឺអេក្រង់">
+        <button data-th="light" aria-label="ភ្លឺ" title="ភ្លឺ"><span class="ic">☀</span>ភ្លឺ</button>
+        <button data-th="auto" aria-label="ស្វ័យប្រវត្តិតាមទូរស័ព្ទ" title="ស្វ័យប្រវត្តិតាមទូរស័ព្ទ"><span class="ic">◐</span>ស្វ័យប្រវត្តិ</button>
+        <button data-th="dark" aria-label="ងងឹត" title="ងងឹត"><span class="ic">☾</span>ងងឹត</button>
+      </div>
+    </div>
+  </header>
+
+
+  <div class="monthnav">
+    <button class="iconbtn" id="prev" aria-label="ខែមុន">‹</button>
+    <div class="label" id="monthLabel"></div>
+    <button class="iconbtn" id="next" aria-label="ខែបន្ទាប់">›</button>
+    <button class="btn" id="todayBtn">ខែនេះ</button>
+  </div>
+
+  <nav class="sections" role="tablist" aria-label="ផ្នែក">
+    <button class="sec s-off" role="tab" data-sec="off" id="tab-off"><span class="no">ផ្នែកទី ១</span><span class="nm">Day off</span><span class="ct" id="ct-off"></span></button>
+    <button class="sec s-work" role="tab" data-sec="work" id="tab-work"><span class="no">ផ្នែកទី ២</span><span class="nm">Working day</span><span class="ct" id="ct-work"></span></button>
+    <button class="sec s-leave" role="tab" data-sec="leave" id="tab-leave"><span class="no">ផ្នែកទី ៣</span><span class="nm">ច្បាប់</span><span class="ct" id="ct-leave"></span></button>
+  </nav>
+  </div>
+  <div class="abanner" id="accessBanner" hidden></div>
+
+
+  <section class="summary" id="summary" aria-label="សង្ខេបប្រចាំខែ"></section>
+
+
+
+  <section class="calcard">
+    <div class="caltools">
+      <p class="hint" id="secHint"></p>
+      <div class="toggle" role="group" aria-label="របៀបជ្រើសរើស">
+        <button id="modeTap" aria-pressed="true">ម្ដងមួយថ្ងៃ</button>
+        <button id="modeRange" aria-pressed="false">ជាចន្លោះ</button>
+      </div>
+    </div>
+    <div class="grid" id="dows"></div>
+    <div class="grid" id="cal" style="margin-top:4px"></div>
+    <div class="legend">
+      <span><i style="background:var(--card);border:1px solid var(--line)"></i>Working day</span>
+      <span><i style="background:var(--weekend-soft)"></i>ចុងសប្ដាហ៍</span>
+      <span><i style="background:var(--off-soft)"></i>Day off / ថ្ងៃបុណ្យ</span>
+      <span><i style="background:var(--accent)"></i>កំណត់ជា Working day</span>
+      <span><i style="background:var(--leave-soft)"></i>ច្បាប់</span>
+    </div>
+  </section>
+
+  <section class="panel" id="selSummary">
+    <header>
+      <h2>តារាងសង្ខេបថ្ងៃដែលបានជ្រើស</h2>
+      <div class="quick">
+        <button class="btn fitbtn" id="ssFit">ឃើញពេញមួយអេក្រង់</button>
+        <button class="btn" id="selMonth">ជ្រើសថ្ងៃធ្វើការក្នុងរយៈពេល</button>
+        <button class="btn" id="ssXlsx" hidden>⬇ ទាញយក Excel</button>
+        <button class="btn" id="ssCopy" disabled>ចម្លងតារាង</button>
+        <button class="btn danger" id="ssClearAll">សម្អាតទាំងអស់</button>
+      </div>
+    </header>
+    <div class="period">
+      <div class="prow">
+        <span class="plabel">រយៈពេល</span>
+        <label for="pFrom" class="sub">ពី</label><input type="date" id="pFrom">
+        <label for="pTo" class="sub">ដល់</label><input type="date" id="pTo">
+      </div>
+      <div class="prow">
+        <button class="btn" id="pMonth">តាមខែកំពុងមើល</button>
+        <button class="btn" id="pCycle" title="ថ្ងៃទី ២៦ ខែមុន ដល់ថ្ងៃទី ២៥ ខែនេះ">២៦ ខែមុន – ២៥ ខែនេះ</button>
+      </div>
+    </div>
+    <div class="orgrow"><label for="orgName" class="sub">ឈ្មោះអង្គភាព (ក្នុង Excel)</label><input id="orgName" placeholder="ឧ. RISING PHOENIX"></div>
+    <div class="groups" id="ssGroups"></div>
+  </section>
+
+  <!-- Section 1 -->
+  <section class="panel" id="panel-off">
+    <header><h2>ផ្នែកទី ១ · Day off ក្នុងខែ</h2></header>
+    <div class="rows" id="offList"></div>
+  </section>
+
+  <!-- Section 2 -->
+  <section class="panel" id="panel-work" hidden>
+    <header><h2>ផ្នែកទី ២ · Working day ក្នុងខែ</h2></header>
+    <p class="sub" id="workSummary"></p>
+    <div class="rows" id="workList"></div>
+  </section>
+
+  <!-- Section 3 -->
+  <section class="panel" id="panel-leave" hidden>
+    <header><h2>ផ្នែកទី ៣ · ច្បាប់ក្នុងខែ</h2><button class="btn" id="copyBtn">ចម្លងតារាង Time Sheet</button></header>
+    <div class="rows" id="leaveList"></div>
+    <header style="margin-top:6px"><h2 id="balTitle">សមតុល្យច្បាប់</h2></header>
+    <div class="balwrap"><table class="bal" id="balTable"></table></div>
+    <p class="status">ចំនួនថ្ងៃកំណត់អាចកែបាន ប្រសិនបើអង្គភាពមានបទបញ្ជាផ្ទៃក្នុងខុសពីនេះ។ ច្បាប់គិតតែលើ Working day ប៉ុណ្ណោះ។</p>
+    <div class="addtype">
+      <h3 style="width:100%">បន្ថែមប្រភេទច្បាប់ (ករណីផ្សេងៗ)</h3>
+      <input id="ntName" placeholder="ឈ្មោះច្បាប់ ឧ. ច្បាប់ចូលរួមពិធីបុណ្យសព" aria-label="ឈ្មោះប្រភេទច្បាប់">
+      <input id="ntQuota" type="number" min="0" step="0.5" placeholder="ថ្ងៃ/ឆ្នាំ" aria-label="ចំនួនថ្ងៃកំណត់ក្នុងមួយឆ្នាំ" style="width:7em">
+      <label class="check"><input type="checkbox" id="ntWork"> គិតជាថ្ងៃធ្វើការ</label>
+      <button class="btn" id="ntAdd">បន្ថែម</button>
+    </div>
+  </section>
+  <section class="panel" id="syncBox" hidden>
+    <header><h2>ទិន្នន័យរួម (Google Sheet)</h2></header>
+    <p class="sub" style="margin:0">ដាក់តំណ Apps Script ដែល admin ផ្ដល់ឱ្យ ដើម្បីឱ្យទិន្នន័យមន្ត្រីទាំងអស់ទៅកន្លែងតែមួយ។</p>
+    <div class="orgrow"><input id="syncUrl" placeholder="https://script.google.com/macros/s/…/exec" inputmode="url" autocomplete="off"></div>
+    <div class="orgrow"><input id="syncKey" placeholder="លេខកូដសម្ងាត់ (បើមាន)" autocomplete="off"><button class="btn primary" id="syncSave">ភ្ជាប់</button><button class="btn" id="syncNow">ធ្វើបច្ចុប្បន្នភាព</button><button class="btn danger" id="syncOff" hidden>ផ្ដាច់</button></div>
+    <p class="syncst" id="syncState"></p>
+  </section>
+  <p class="status" id="storeStatus"></p>
+</div>
+
+<div class="tray" id="tray" hidden>
+  <div class="in">
+    <div class="line"><span class="count" id="selCount"></span><button class="btn" id="selClear">សម្អាត</button><button class="btn" id="trayToggle" aria-expanded="true" style="margin-left:auto">បង្រួម ▾</button></div>
+
+    <div id="tray-off" class="line" style="flex-direction:column;align-items:stretch">
+      <div class="line">
+        <select id="offReason" aria-label="មូលហេតុ Day off">
+          <option>ថ្ងៃឈប់សម្រាកបន្ថែម (សេចក្ដីជូនដំណឹងរាជរដ្ឋាភិបាល)</option>
+          <option>ថ្ងៃឈប់សងវិញ (ធ្វើការថ្ងៃសម្រាករួច)</option>
+          <option>ថ្ងៃឈប់សម្រាកប្រចាំសប្ដាហ៍ (វេន)</option>
+          <option value="__">ផ្សេងៗ…</option>
+        </select>
+        <input id="offOther" placeholder="សរសេរមូលហេតុ" aria-label="មូលហេតុផ្សេងៗ" hidden>
+      </div>
+      <div class="line scope"></div>
+      <div class="line"><button class="btn primary" id="offApply">កំណត់ជា Day off</button><button class="btn danger" id="offRemove">ដកការកំណត់ចេញ</button></div>
+    </div>
+
+    <div id="tray-work" class="line" style="flex-direction:column;align-items:stretch" hidden>
+      <div class="line">
+        <select id="workReason" aria-label="មូលហេតុ Working day">
+          <option>ធ្វើការជំនួស (ថ្ងៃសៅរ៍/អាទិត្យ)</option>
+          <option>ធ្វើការថ្ងៃបុណ្យ (ប្រាក់ឈ្នួលទ្វេដង)</option>
+          <option>វេនការងារ / ប្រចាំការ</option>
+          <option value="__">ផ្សេងៗ…</option>
+        </select>
+        <input id="workOther" placeholder="សរសេរមូលហេតុ" aria-label="មូលហេតុផ្សេងៗ" hidden>
+      </div>
+      <div class="line scope"></div>
+      <div class="line"><button class="btn primary" id="workApply">កំណត់ជា Working day</button><button class="btn danger" id="workRemove">ដកការកំណត់ចេញ</button></div>
+      <div class="otbox">
+        <h3>ធ្វើការបន្ថែមម៉ោង</h3>
+        <div class="line">
+          <input id="otHours" type="number" min="0.5" max="24" step="0.5" placeholder="ម៉ោង" aria-label="ចំនួនម៉ោងបន្ថែម" style="width:6em">
+          <input id="otNote" placeholder="ការងារ / មូលហេតុ" aria-label="កំណត់សម្គាល់ម៉ោងបន្ថែម">
+        </div>
+        <div class="line"><button class="btn primary" id="otApply">បញ្ចូលម៉ោងបន្ថែម</button><button class="btn danger" id="otRemove">ដកម៉ោងបន្ថែម</button></div>
+        <p class="note" id="otNoteMsg">ម៉ោងបន្ថែមកត់ត្រាសម្រាប់មន្ត្រីដែលកំពុងជ្រើស ហើយបង្ហាញក្នុងផ្នែក Working day។</p>
+      </div>
+    </div>
+
+    <div id="tray-leave" class="line" style="flex-direction:column;align-items:stretch" hidden>
+      <div class="line">
+        <select id="leaveType" aria-label="ប្រភេទច្បាប់"></select>
+        <select id="leavePart" aria-label="រយៈពេល">
+          <option value="full">ពេញមួយថ្ងៃ</option>
+          <option value="am">ពេលព្រឹក (០.៥)</option>
+          <option value="pm">ពេលរសៀល (០.៥)</option>
+        </select>
+      </div>
+      <div class="line"><input id="leaveNote" placeholder="មូលហេតុ / លេខលិខិតស្នើសុំ" aria-label="កំណត់សម្គាល់"></div>
+      <p class="note" id="leaveWarn"></p>
+      <div class="line"><button class="btn primary" id="leaveApply">ដាក់ច្បាប់</button><button class="btn danger" id="leaveRemove">ដកច្បាប់ចេញ</button></div>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(function(){
+const KD='០១២៣៤៥៦៧៨៩';
+const kh=s=>String(s).replace(/\d/g,d=>KD[d]).replace('.',',');
+const MONTHS=['មករា','កុម្ភៈ','មីនា','មេសា','ឧសភា','មិថុនា','កក្កដា','សីហា','កញ្ញា','តុលា','វិច្ឆិកា','ធ្នូ'];
+const DOWS=['ចន្ទ','អង្គារ','ពុធ','ព្រហ','សុក្រ','សៅរ៍','អាទិត្យ'];
+const DOW_FULL=['អាទិត្យ','ចន្ទ','អង្គារ','ពុធ','ព្រហស្បតិ៍','សុក្រ','សៅរ៍'];
+const PART={full:{v:1,l:''},am:{v:.5,l:'ព្រឹក'},pm:{v:.5,l:'រសៀល'}};
+
+// Leave types under the Labour Law (default quotas; editable per organisation)
+const BUILTIN=[
+  {id:'annual',name:'ច្បាប់ឈប់សម្រាកប្រចាំឆ្នាំ',short:'ប្រចាំឆ្នាំ',quota:18,work:false,law:'មាត្រា ១៦៦ · ១,៥ ថ្ងៃ/ខែ និងបន្ថែម ១ ថ្ងៃ រៀងរាល់ ៣ ឆ្នាំនៃអតីតភាព · មានប្រាក់ឈ្នួល'},
+  {id:'special',name:'ច្បាប់ពិសេស (ព្រឹត្តិការណ៍គ្រួសារ)',short:'ពិសេស',quota:7,work:false,law:'មាត្រា ១៧១ · រៀបការ មរណភាព កំណើតកូន ក្នុងគ្រួសារផ្ទាល់'},
+  {id:'sick',name:'ច្បាប់ព្យាបាលជំងឺ',short:'ព្យាបាលជំងឺ',quota:null,work:false,law:'ត្រូវមានវិញ្ញាបនបត្រពេទ្យ'},
+  {id:'maternity',name:'ច្បាប់លំហែមាតុភាព',short:'មាតុភាព',quota:90,work:false,law:'មាត្រា ១៨២ · ៩០ ថ្ងៃ'},
+  {id:'unpaid',name:'ច្បាប់ឈប់ដោយគ្មានប្រាក់ឈ្នួល',short:'គ្មានប្រាក់ឈ្នួល',quota:null,work:false,law:'តាមការព្រមព្រៀងជាមួយថ្នាក់ដឹកនាំ'},
+  {id:'mission',name:'បេសកកម្ម',short:'បេសកកម្ម',quota:null,work:true,law:'គិតជាថ្ងៃធ្វើការ'}
+];
+
+// Official public holidays 2026 — Sub-Decree No. 167 (18 Sep 2025)
+const HOL={
+'2026-01-01':'ទិវាចូលឆ្នាំសកល','2026-01-07':'ទិវាជ័យជម្នះលើរបបប្រល័យពូជសាសន៍','2026-03-08':'ទិវានារីអន្តរជាតិ',
+'2026-04-14':'ពិធីបុណ្យចូលឆ្នាំខ្មែរ','2026-04-15':'ពិធីបុណ្យចូលឆ្នាំខ្មែរ','2026-04-16':'ពិធីបុណ្យចូលឆ្នាំខ្មែរ',
+'2026-05-01':'ទិវាពលកម្មអន្តរជាតិ និងពិធីបុណ្យវិសាខបូជា','2026-05-05':'ព្រះរាជពិធីច្រត់ព្រះនង្គ័ល',
+'2026-05-14':'ព្រះរាជពិធីបុណ្យចម្រើនព្រះជន្មព្រះមហាក្សត្រ','2026-06-18':'ព្រះរាជពិធីបុណ្យចម្រើនព្រះជន្មសម្ដេចព្រះមហាក្សត្រី ព្រះវររាជមាតា',
+'2026-09-24':'ទិវាប្រកាសរដ្ឋធម្មនុញ្ញ',
+'2026-10-10':'ពិធីបុណ្យភ្ជុំបិណ្ឌ','2026-10-11':'ពិធីបុណ្យភ្ជុំបិណ្ឌ','2026-10-12':'ពិធីបុណ្យភ្ជុំបិណ្ឌ',
+'2026-10-15':'ទិវាប្រារព្ធពិធីគោរពព្រះវិញ្ញាណក្ខន្ធព្រះបរមរតនកោដ្ឋ','2026-10-29':'ព្រះរាជពិធីគ្រងព្រះបរមរាជសម្បត្តិ',
+'2026-11-09':'ពិធីបុណ្យឯករាជ្យជាតិ',
+'2026-11-23':'ព្រះរាជពិធីបុណ្យអុំទូក','2026-11-24':'ព្រះរាជពិធីបុណ្យអុំទូក','2026-11-25':'ព្រះរាជពិធីបុណ្យអុំទូក',
+'2026-12-29':'ទិវាសន្តិភាពនៅកម្ពុជា'
+};
+const SEC={off:{color:'var(--off)',hint:'ជ្រើសថ្ងៃលើប្រតិទិន ដើម្បីកំណត់ជា Day off'},work:{color:'var(--accent)',hint:'ជ្រើសថ្ងៃលើប្រតិទិន ដើម្បីកំណត់ជា Working day'},leave:{color:'var(--leave)',hint:'ជ្រើសថ្ងៃលើប្រតិទិន ដើម្បីដាក់ច្បាប់'}};
+
+const pad=n=>String(n).padStart(2,'0');
+const iso=(y,m,d)=>y+'-'+pad(m+1)+'-'+pad(d);
+const parse=s=>{const[a,b,c]=s.split('-').map(Number);return new Date(a,b-1,c)};
+const fmt=s=>{const d=parse(s);return kh(d.getDate())+' '+MONTHS[d.getMonth()]+' '+kh(d.getFullYear())};
+const now=new Date();
+const TODAY=iso(now.getFullYear(),now.getMonth(),now.getDate());
+
+const S={staff:{},leaves:{},cal:{},types:{},ot:{},picks:{},settings:{},view:{y:now.getFullYear(),m:now.getMonth()},staffId:null,selBy:{off:new Set(),work:new Set(),leave:new Set()},mode:'tap',anchor:null,sec:'off',scope:'all'};
+Object.defineProperty(S,'sel',{get(){return S.selBy[S.sec]}});
+const pickedIn=ds=>['off','work','leave'].find(k=>S.selBy[k].has(ds));
+const SECNAME={off:'Day off',work:'Working day',leave:'ច្បាប់'};
+function pick(ds,quiet){for(const k in S.selBy)if(k!==S.sec&&S.selBy[k].has(ds)){S.selBy[k].delete(ds);if(!quiet)toast(fmt(ds)+' ផ្លាស់ពី '+SECNAME[k]+' ទៅ '+SECNAME[S.sec])}S.sel.add(ds)}
+let db=null;
+
+// ---------- storage ----------
+const LS='timesheet-local-v1';
+const COLL={staff:'staff',leaves:'leaves',cal:'calendar',types:'leaveTypes',ot:'overtime',picks:'picks',settings:'settings'};
+function lsLoad(){try{const j=JSON.parse(localStorage.getItem(LS)||'null');if(j)for(const k of Object.keys(COLL))S[k]=j[k]||{}}catch(e){}}
+function lsSave(){try{localStorage.setItem(LS,JSON.stringify({staff:S.staff,leaves:S.leaves,cal:S.cal,types:S.types,ot:S.ot,picks:S.picks,settings:S.settings}))}catch(e){}}
+async function put(kind,id,data){if(!db&&SYNC.url){S[kind][id]=data;lsSave();queueOp({op:'set',kind,id,data});return}if(db){try{await db.collection(COLL[kind]).doc(id).set(data)}catch(e){if(e&&e.code==='invalid_argument')noWrite();throw e}}else{S[kind][id]=data;lsSave()}}
+async function del(kind,id){if(!db&&SYNC.url){delete S[kind][id];lsSave();queueOp({op:'delete',kind,id});return}if(db)await db.collection(COLL[kind]).doc(id).delete();else{delete S[kind][id];lsSave()}}
+// ---------- standalone app: optional shared data in a Google Sheet (Apps Script web app) ----------
+const STANDALONE=window.self===window.top;
+let SYNC={url:'',key:''};try{SYNC=Object.assign(SYNC,JSON.parse(localStorage.getItem('timesheet-sync')||'{}'))}catch(e){}
+let OUTBOX=[];try{OUTBOX=JSON.parse(localStorage.getItem('timesheet-outbox')||'[]')}catch(e){}
+const saveOutbox=()=>{try{localStorage.setItem('timesheet-outbox',JSON.stringify(OUTBOX))}catch(e){}};
+let syncBusy=false,lastSync=null,syncErr='';
+function queueOp(o){OUTBOX=OUTBOX.filter(x=>!(x.kind===o.kind&&x.id===o.id));OUTBOX.push(o);saveOutbox();flushOutbox()}
+async function flushOutbox(){
+  if(!SYNC.url||syncBusy||!OUTBOX.length||!navigator.onLine)return syncUI();
+  syncBusy=true;
+  try{while(OUTBOX.length){const o=OUTBOX[0];
+      const r=await fetch(SYNC.url,{method:'POST',body:JSON.stringify(Object.assign({key:SYNC.key},o))});
+      const j=await r.json().catch(()=>({}));if(!r.ok||j.ok===false)throw new Error(j.error||('HTTP '+r.status));
+      OUTBOX.shift();saveOutbox()}
+    syncErr='';
+  }catch(e){syncErr=String(e.message||e)}
+  syncBusy=false;syncUI();
+}
+async function pullSync(){
+  if(!SYNC.url||!navigator.onLine)return syncUI();
+  try{await flushOutbox();
+    const r=await fetch(SYNC.url+(SYNC.url.includes('?')?'&':'?')+'key='+encodeURIComponent(SYNC.key||'')+'&t='+Date.now());
+    const j=await r.json();if(j&&j.ok===false)throw new Error(j.error||'refused');
+    const before=S.staffId&&JSON.stringify(S.picks[S.staffId]||{});
+    for(const k of Object.keys(COLL))S[k]=(j&&j[k])||{};
+    for(const o of OUTBOX){if(o.op==='set')S[o.kind][o.id]=o.data;else delete S[o.kind][o.id]}
+    lsSave();lastSync=new Date();syncErr='';
+    if(S.staffId&&!pickPending&&JSON.stringify(S.picks[S.staffId]||{})!==before)S.loadedFor=null;
+    render();
+  }catch(e){syncErr=String(e.message||e)}
+  syncUI();
+}
+function syncUI(){
+  const box=document.getElementById('syncBox');if(!box)return;
+  box.hidden=!STANDALONE;
+  const st=document.getElementById('syncState');
+  if(!SYNC.url){st.textContent='មិនទាន់ភ្ជាប់ — ទិន្នន័យនៅលើឧបករណ៍នេះប៉ុណ្ណោះ។';st.className='syncst off'}
+  else if(syncErr){st.textContent='ភ្ជាប់មិនបាន៖ '+syncErr+(OUTBOX.length?' · រង់ចាំផ្ញើ '+kh(OUTBOX.length):'');st.className='syncst err'}
+  else{st.textContent='បានភ្ជាប់ Google Sheet'+(lastSync?' · ធ្វើបច្ចុប្បន្នភាព '+lastSync.toLocaleTimeString('km-KH',{hour:'2-digit',minute:'2-digit'}):'')+(OUTBOX.length?' · រង់ចាំផ្ញើ '+kh(OUTBOX.length):'');st.className='syncst ok'}
+  const u=document.getElementById('syncUrl'),k=document.getElementById('syncKey');
+  if(u&&document.activeElement!==u)u.value=SYNC.url||'';if(k&&document.activeElement!==k)k.value=SYNC.key||'';
+  document.getElementById('syncOff').hidden=!SYNC.url;
+}
+
+function subscribe(){
+  for(const k of Object.keys(COLL)){
+    db.collection(COLL[k]).onSnapshot(snap=>{const o={};snap.docs.forEach(d=>{if(d.exists)o[d.id]=d.data()});S[k]=o;if(k==='picks'&&S.staffId&&!pickPending){const d=o[S.staffId];const j=JSON.stringify({work:(d&&d.work||[]).slice().sort(),leave:(d&&d.leave||[]).slice().sort()});if(j!==synced[S.staffId])S.loadedFor=null}render()},
+      e=>setStatus('មិនអាចភ្ជាប់ទិន្នន័យរួម ('+e.code+')'));
+  }
+}
+function setStatus(t){document.getElementById('storeStatus').textContent=t}
+function banner(kind,html){const b=$('accessBanner');if(!kind){b.hidden=true;return}b.hidden=false;b.className='abanner '+kind;b.innerHTML=html}
+function noWrite(){banner('warn','<b>អ្នកមិនមានសិទ្ធិរក្សាទុកទិន្នន័យទេ។</b> អ្វីដែលអ្នកបញ្ចូល នឹងមិនទៅដល់ admin ទេ។ សូមស្នើឱ្យ admin ផ្ដល់សិទ្ធិ <b>Contributor</b> ឬ <b>Editor</b> តាមរយៈប៊ូតុង "ចែករំលែក" (Share) របស់ទំព័រនេះ។')}
+
+// ---------- day picks are saved per officer ----------
+let pickTimer=null,pickPending=false;const synced={};
+const pickJSON=()=>JSON.stringify({work:[...S.selBy.work].sort(),leave:[...S.selBy.leave].sort()});
+function loadPicks(id){const p=S.picks[id]||{};S.selBy.work=new Set(p.work||[]);S.selBy.leave=new Set(p.leave||[]);S.selBy.off=new Set();synced[id]=pickJSON();S.loadedFor=id}
+function syncPicks(){
+  const id=S.staffId;if(!id)return;
+  if(S.loadedFor!==id){loadPicks(id);return}
+  const cur=pickJSON();if(cur===synced[id])return;
+  synced[id]=cur;pickPending=true;clearTimeout(pickTimer);
+  pickTimer=setTimeout(async()=>{const body=JSON.parse(cur);body.updated=new Date().toISOString();
+    try{await put('picks',id,body);if(!db)render()}catch(e){toast('រក្សាទុកថ្ងៃដែលជ្រើសមិនបាន')}finally{pickPending=false}},500);
+}
+
+// ---------- leave types ----------
+function types(){
+  const out=BUILTIN.map(b=>{const o=S.types[b.id];return Object.assign({},b,o&&o.quota!==undefined?{quota:o.quota}:{},{custom:false})});
+  for(const[id,t]of Object.entries(S.types))if(t.custom)out.push(Object.assign({id,short:t.name,law:'ករណីផ្សេងៗ (បន្ថែមដោយអង្គភាព)'},t));
+  return out;
+}
+const typeOf=id=>types().find(t=>t.id===id)||{id,name:'ច្បាប់ផ្សេងៗ',short:'ផ្សេងៗ',quota:null,work:false};
+
+// ---------- calendar logic ----------
+const pKey=(sid,ds)=>sid+'_'+ds;
+function adjOf(ds){return (S.staffId&&S.cal[pKey(S.staffId,ds)])||S.cal[ds]||null}
+function dayInfo(ds){
+  const wd=parse(ds).getDay(),hol=HOL[ds],weekend=wd===0||wd===6,adj=adjOf(ds);
+  let working=!(hol||weekend),cls=hol?'off':weekend?'weekend':'',label=hol||'';
+  if(adj){working=adj.kind==='work';cls=working?'mark-work':'off';label=adj.label||(working?'Working day':'Day off')}
+  return{working,cls,label,hol,weekend,adj};
+}
+const leaveOf=ds=>S.staffId?S.leaves[pKey(S.staffId,ds)]:null;
+const otOf=ds=>S.staffId?S.ot[pKey(S.staffId,ds)]:null;
+function monthDays(y,m){const n=new Date(y,m+1,0).getDate();return Array.from({length:n},(_,i)=>iso(y,m,i+1))}
+
+// ---------- render ----------
+const $=id=>document.getElementById(id);
+$('dows').innerHTML=DOWS.map((d,i)=>`<div class="dow${i>4?' we':''}">${d}</div>`).join('');
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const scopeTag=a=>a&&a.scope&&a.scope!=='all'?'<span class="tag">មន្ត្រីនេះ</span>':'<span class="tag">មន្ត្រីទាំងអស់</span>';
+
+function render(){
+  const ids=Object.keys(S.staff).sort((a,b)=>(S.staff[a].name||'').localeCompare(S.staff[b].name||'','km'));
+  if(!ids.includes(S.staffId))S.staffId=ids[0]||null;
+  syncPicks();
+  const sel=$('staffSel');sel.innerHTML='';
+  if(!ids.length){const o=document.createElement('option');o.textContent='— បន្ថែមមន្ត្រីជាមុនសិន —';o.value='';sel.appendChild(o)}
+  ids.forEach(id=>{const o=document.createElement('option');o.value=id;o.textContent=S.staff[id].name;sel.appendChild(o)});
+  sel.value=S.staffId||'';$('staffDel').hidden=!S.staffId;
+
+  // section chrome
+  document.documentElement.style.setProperty('--sec',SEC[S.sec].color);
+  for(const k of ['off','work','leave']){$('tab-'+k).setAttribute('aria-selected',S.sec===k);$('panel-'+k).hidden=S.sec!==k;$('tray-'+k).hidden=S.sec!==k}
+  $('secHint').textContent=SEC[S.sec].hint;
+
+  const{y,m}=S.view;
+  $('monthLabel').textContent='ខែ'+MONTHS[m]+' '+kh(y);
+  const days=monthDays(y,m);
+  const first=(parse(days[0]).getDay()+6)%7;
+  let html='';for(let i=0;i<first;i++)html+='<div class="day blank"></div>';
+  let cWork=0,cOff=0,cLeave=0,cMission=0;const offRows=[],workRows=[],leaveRows=[];
+  for(const ds of days){
+    const inf=dayInfo(ds),lv=leaveOf(ds),dn=parse(ds).getDate();
+    if(inf.working){cWork++;workRows.push([ds,inf]);if(lv){const t=typeOf(lv.type);leaveRows.push([ds,lv,t]);if(t.work)cMission+=lv.amount;else cLeave+=lv.amount}}
+    else if(inf.hol||inf.adj){offRows.push([ds,inf]);cOff++}
+    let chip='';
+    if(lv&&inf.working){const t=typeOf(lv.type);chip=`<span class="chip ${t.work?'mission':'leave'}">${esc(t.short)}${lv.part!=='full'?' · '+PART[lv.part].l:''}</span>`}
+    const ot=otOf(ds);if(ot)chip+=`<span class="chip ot">+${kh(ot.hours)} ម៉ោង</span>`;
+    const c=['day'];if(inf.cls)c.push(inf.cls);if(ds===TODAY)c.push('today');if(S.period&&!inPeriod(ds))c.push('outp');if(S.sel.has(ds))c.push('sel');else{const pk=pickedIn(ds);if(pk)c.push('pk-'+pk)}
+    html+=`<button class="${c.join(' ')}" data-d="${ds}" aria-pressed="${S.sel.has(ds)}" aria-label="${fmt(ds)} ${esc(inf.label)}"><span class="n">${kh(dn)}</span>${chip}${inf.label&&!(lv&&inf.working)?`<span class="t">${esc(inf.label)}</span>`:''}</button>`;
+  }
+  $('cal').innerHTML=html;
+  const actual=cWork-cLeave;
+  $('summary').innerHTML=`
+    <div class="k-work"><b>${kh(cWork)}</b><span>Working day</span></div>
+    <div class="k-off"><b>${kh(cOff)}</b><span>Day off (ក្រៅពីចុងសប្ដាហ៍)</span></div>
+    <div class="k-leave"><b>${kh(cLeave)}</b><span>ថ្ងៃច្បាប់</span></div>
+    <div><b>${kh(actual)}</b><span>ថ្ងៃធ្វើការជាក់ស្ដែង${cMission?' · បេសកកម្ម '+kh(cMission):''}</span></div>`;
+  $('ct-off').textContent=kh(cOff)+' ថ្ងៃ';$('ct-work').textContent=kh(cWork)+' ថ្ងៃ';$('ct-leave').textContent=kh(cLeave)+' ថ្ងៃ';
+
+  // Section 1 list
+  $('offList').innerHTML=offRows.length?offRows.map(([ds,inf])=>{
+    const src=inf.adj?scopeTag(inf.adj):'<span class="tag">អនុក្រឹត្យ</span>';
+    return `<div class="row"><span class="d">${fmt(ds)}</span><span class="m">${esc(inf.label)}</span>${src}${inf.adj?`<button class="btn danger" data-unadj="${ds}">ដកចេញ</button>`:''}</div>`}).join('')
+    :'<p class="empty">ខែនេះគ្មានថ្ងៃបុណ្យ ឬ Day off បន្ថែមទេ (ក្រៅពីចុងសប្ដាហ៍)។</p>';
+  // Section 2 list: only marked working days (default weekdays summarised)
+  const marked=workRows.filter(([,inf])=>inf.adj);
+  $('workSummary').textContent='ថ្ងៃចន្ទ–សុក្រ ដែលមិនមែនជាថ្ងៃបុណ្យ ជា Working day ដោយស្វ័យប្រវត្តិ។ ខាងក្រោមជាថ្ងៃដែលបានកំណត់បន្ថែម។';
+  $('workList').innerHTML=marked.length?marked.map(([ds,inf])=>`<div class="row"><span class="d">${fmt(ds)}</span><span class="m">${esc(inf.label)}</span>${scopeTag(inf.adj)}<button class="btn danger" data-unadj="${ds}">ដកចេញ</button></div>`).join('')
+    :'<p class="empty">មិនទាន់មានថ្ងៃចុងសប្ដាហ៍ ឬថ្ងៃបុណ្យណាមួយ ដែលកំណត់ជា Working day ទេ។</p>';
+  // Section 3 list
+  $('leaveList').innerHTML=!S.staffId?'<p class="empty">បន្ថែមឈ្មោះមន្ត្រីនៅខាងលើ ដើម្បីចាប់ផ្ដើមកត់ត្រាច្បាប់។</p>':
+    leaveRows.length?leaveRows.map(([ds,l,t])=>`<div class="row"><span class="d">${fmt(ds)}</span><span class="m">${esc(t.short)}${l.part!=='full'?' ('+PART[l.part].l+')':''}${l.note?' — '+esc(l.note):''}</span><button class="btn danger" data-rm="${ds}">ដក</button></div>`).join('')
+    :'<p class="empty">មិនទាន់មានច្បាប់ក្នុងខែនេះទេ។ ជ្រើសថ្ងៃលើប្រតិទិន ដើម្បីដាក់ច្បាប់។</p>';
+
+  // balances
+  const used=usedByType(y);
+  $('balTitle').textContent='សមតុល្យច្បាប់ឆ្នាំ '+kh(y)+(S.staffId?' · '+S.staff[S.staffId].name:'');
+  $('balTable').innerHTML='<tr><th>ប្រភេទច្បាប់</th><th>កំណត់/ឆ្នាំ</th><th>បានប្រើ</th><th>នៅសល់</th><th></th></tr>'+types().map(t=>{
+    const u=used[t.id]||0,q=t.quota,rem=q==null?null:q-u,pct=q?Math.min(100,u/q*100):0;
+    return `<tr><td>${esc(t.name)}<span class="law">${esc(t.law||'')}</span>${q?`<div class="bar"><i style="width:${pct}%"></i></div>`:''}</td>
+      <td class="num"><input type="number" min="0" step="0.5" value="${q??''}" placeholder="—" data-quota="${t.id}" aria-label="ចំនួនថ្ងៃកំណត់ ${esc(t.name)}"></td>
+      <td class="num">${kh(u)}</td><td class="num ${rem!=null&&rem<0?'over':''}">${rem==null?'—':kh(rem)}</td>
+      <td>${t.custom?`<button class="btn danger" data-deltype="${t.id}" aria-label="លុប ${esc(t.name)}">លុប</button>`:''}</td></tr>`}).join('');
+
+  // leave type select (keep choice)
+  const lt=$('leaveType'),cur=lt.value;lt.innerHTML='';
+  types().forEach(t=>{const o=document.createElement('option');o.value=t.id;o.textContent=t.name+(t.quota!=null&&S.staffId?' (សល់ '+kh(t.quota-(used[t.id]||0))+')':'');lt.appendChild(o)});
+  if(cur&&types().some(t=>t.id===cur))lt.value=cur;
+  updateWarn(used);
+
+  // scope pickers
+  document.querySelectorAll('.tray .scope').forEach(el=>{el.innerHTML=`
+    <label class="check"><input type="radio" name="scope-${el.parentElement.id}" value="all" ${S.scope==='all'?'checked':''}> មន្ត្រីទាំងអស់ (ប្រតិទិនក្រសួង)</label>
+    <label class="check"><input type="radio" name="scope-${el.parentElement.id}" value="one" ${S.scope==='one'?'checked':''} ${S.staffId?'':'disabled'}> តែ${S.staffId?esc(S.staff[S.staffId].name):'មន្ត្រីម្នាក់'}</label>`});
+
+  {const o=$('orgName'),v=(S.settings.org&&S.settings.org.name)||'';if(document.activeElement!==o&&o.value!==v)o.value=v}
+  renderSelSummary();
+  $('tray').hidden=S.sel.size===0;
+  $('selCount').textContent={off:'Day off',work:'Working day',leave:'ច្បាប់'}[S.sec]+' · បានជ្រើស '+kh(S.sel.size)+' ថ្ងៃ';
+  $('leaveApply').disabled=$('leaveRemove').disabled=$('otApply').disabled=$('otRemove').disabled=!S.staffId;
+}
+// ---------- summary of selected days (three groups) ----------
+// Placement rule for every selected day:
+// 1) leave recorded (or picked in ច្បាប់) -> ច្បាប់, removed from Working day
+// 2) picked in Working day, or overtime recorded -> Working day (a rest day worked counts as Working day)
+// 3) otherwise -> Day off
+function placeOf(ds){
+  const inf=dayInfo(ds),lv=leaveOf(ds),t=lv?typeOf(lv.type):null,ot=otOf(ds);
+  if(lv&&!t.work&&inf.working)return'leave';
+  if(S.selBy.leave.has(ds))return'leave';
+  if(S.selBy.work.has(ds)||ot||(lv&&t.work))return'work';
+  return'off';
+}
+// summary period: follows the month on screen, or a custom from–to range that can cross months
+S.period=null; // null = month on screen
+function periodRange(){
+  if(S.period)return S.period;
+  const days=monthDays(S.view.y,S.view.m);return{from:days[0],to:days[days.length-1],auto:true};
+}
+function periodDays(){const{from,to}=periodRange(),out=[];for(let d=parse(from);d<=parse(to);d.setDate(d.getDate()+1))out.push(iso(d.getFullYear(),d.getMonth(),d.getDate()));return out}
+const inPeriod=ds=>{const{from,to}=periodRange();return ds>=from&&ds<=to};
+function periodMonths(){return [...new Set(periodDays().map(d=>d.slice(0,7)))]}
+function setPeriod(from,to){if(!from||!to){S.period=null}else{if(from>to)[from,to]=[to,from];S.period={from,to}}render()}
+function groups(){
+  const G={work:[],off:[],leave:[]};
+  const days=new Set();
+  periodDays().forEach(d=>{if(!dayInfo(d).working)days.add(d)});
+  for(const k of ['work','leave'])for(const d of S.selBy[k])if(inPeriod(d))days.add(d);
+  for(const d of Object.values(S.ot))if(d.staffId===S.staffId&&inPeriod(d.date))days.add(d.date);
+  for(const ds of [...days].sort()){
+    const inf=dayInfo(ds),lv=leaveOf(ds),t=lv?typeOf(lv.type):null,ot=otOf(ds),pl=placeOf(ds);
+    const otTxt=ot?'បន្ថែមម៉ោង '+kh(ot.hours)+' ម៉ោង'+(ot.note?' ('+ot.note+')':''):'';
+    if(pl==='leave'){
+      if(!inf.working&&!(lv&&!t.work)){G.off.push({ds,detail:inf.label||'ចុងសប្ដាហ៍'});continue}
+      G.leave.push({ds,amt:lv&&!t.work?lv.amount:1,detail:(lv&&!t.work?t.name+(lv.part!=='full'?' · កន្លះថ្ងៃ'+PART[lv.part].l:'')+(lv.note?' — '+lv.note:''):'មិនទាន់ដាក់ច្បាប់')+(S.selBy.work.has(ds)?' · ដកចេញពី Working day':'')});
+    }else if(pl==='work'){
+      const detail=!inf.working?'ធ្វើការថ្ងៃសម្រាក · '+(inf.label||'ចុងសប្ដាហ៍'):(lv&&t.work?t.name:(inf.adj?inf.label:'ថ្ងៃធ្វើការ'));
+      G.work.push({ds,detail,ot:otTxt,hrs:ot?Number(ot.hours)||0:0});
+    }else if(!inf.working){
+      G.off.push({ds,detail:inf.label||'ចុងសប្ដាហ៍'});
+    }
+  }
+  // a leave day also shows in Working day, tagged ច្បាប់, and is not counted as a working day
+  G.leave.forEach(r=>{const lv=leaveOf(r.ds),t=lv?typeOf(lv.type):null;
+    G.work.push({ds:r.ds,leave:true,amt:r.amt||1,detail:(t?t.short:'ច្បាប់')+(lv&&lv.part!=='full'?' · កន្លះថ្ងៃ'+PART[lv.part].l+' (ធ្វើការកន្លះថ្ងៃ)':''),ot:''})});
+  G.work.sort((a,b)=>a.ds<b.ds?-1:a.ds>b.ds?1:0);
+  return G;
+}
+const GDEF=[
+  {k:'work',name:'Working day',sub:'ធ្វើការសុទ្ធ + ថ្ងៃសម្រាក/បន្ថែមម៉ោង'},
+  {k:'off',name:'Day off',sub:'ស្វ័យប្រវត្តិ'},
+  {k:'leave',name:'ច្បាប់',sub:'ដកចេញពី Working day'}
+];
+const fmtS=s=>{const d=parse(s);return kh(d.getDate())+' '+MONTHS[d.getMonth()]};
+const DOW_S=['អា','ច','អ','ពុ','ព្រ','សុ','ស'];
+const PLAIN=new Set(['ថ្ងៃធ្វើការ','ចុងសប្ដាហ៍']);
+function cellHtml(r){
+  if(!r)return'';
+  if(r.leave)return `<b>${fmtS(r.ds)} <small>${DOW_FULL[parse(r.ds).getDay()]}</small></b><span class="tag-leave">ច្បាប់</span><span class="cd">${esc(r.detail)} · មិនរាប់ជាថ្ងៃធ្វើការ</span>`;
+  const rest=r.detail&&r.detail.startsWith('ធ្វើការថ្ងៃសម្រាក');
+  const det=r.detail.replace('ធ្វើការថ្ងៃសម្រាក · ','');
+  return `<b>${fmtS(r.ds)} <small>${DOW_FULL[parse(r.ds).getDay()]}</small></b>${rest?'<span class="tag-rest">ធ្វើការថ្ងៃសម្រាក</span>':''}${PLAIN.has(det)?'':`<span class="cd">${esc(det)}</span>`}${r.ot?`<span class="cd otc">${esc(r.ot)}</span>`:''}`;
+}
+function cellTxt(r){return r&&r.leave?fmt(r.ds)+' ('+DOW_FULL[parse(r.ds).getDay()]+') ច្បាប់ — '+r.detail+' (មិនរាប់)':r?fmt(r.ds)+' ('+DOW_FULL[parse(r.ds).getDay()]+') '+r.detail+(r.ot?' · '+r.ot:''):''}
+function totals(G){
+  const w=G.work.reduce((a,r)=>a+(r.leave?1-(r.amt||1):1),0),o=G.off.length,l=G.leave.reduce((a,r)=>a+(r.amt||1),0),h=G.work.reduce((a,r)=>a+(r.hrs||0),0);
+  return{w,o,l,h,rest:G.work.filter(r=>!r.leave&&!dayInfo(r.ds).working).length};
+}
+function renderSelSummary(){
+  const any=true;$('ssCopy').disabled=false;$('ssClearAll').hidden=!(S.selBy.work.size+S.selBy.leave.size);
+  if(!any){$('ssGroups').innerHTML='<p class="empty">ចុចលើថ្ងៃក្នុងប្រតិទិន (ឬប្រើ "ជាចន្លោះ" ឬ "ជ្រើសខែនេះទាំងមូល") ថ្ងៃដែលជ្រើសក្នុងផ្នែក Working day, Day off និងច្បាប់ នឹងចេញក្នុងជួរឈររៀងៗខ្លួន នៅក្នុងតារាងនេះ។</p>';return}
+  const G=groups(),n=Math.max(G.work.length,G.off.length,G.leave.length),T=totals(G);
+  let body='';
+  for(let i=0;i<n;i++)body+=`<tr><td class="no">${kh(i+1)}</td><td class="c-work${G.work[i]&&G.work[i].leave?' lv':G.work[i]&&!dayInfo(G.work[i].ds).working?' rest':''}">${cellHtml(G.work[i])}</td><td class="c-off">${cellHtml(G.off[i])}</td><td class="c-leave">${cellHtml(G.leave[i])}</td></tr>`;
+  const pr=periodRange(),pm=(pr.auto?'ខែ'+MONTHS[S.view.m]+' '+kh(S.view.y)+' · ':'')+fmt(pr.from)+' – '+fmt(pr.to);
+  $('pFrom').value=pr.from;$('pTo').value=pr.to;$('pMonth').setAttribute('aria-pressed',!!pr.auto);
+  {const y=S.view.y,m=S.view.m,p=new Date(y,m-1,26),cf=iso(p.getFullYear(),p.getMonth(),26),ct=iso(y,m,25);
+   const isCycle=!pr.auto&&pr.from===cf&&pr.to===ct;$('pCycle').setAttribute('aria-pressed',isCycle);
+   document.querySelector('.period').classList.toggle('custom',!pr.auto&&!isCycle);}
+  $('ssGroups').innerHTML=`<p class="sub" style="margin:0 0 8px">${pm}${S.staffId?' · '+esc(S.staff[S.staffId].name):''}</p><div class="balwrap"><table class="tri"><colgroup><col class="cno"><col class="cw"><col class="co"><col class="cl"></colgroup>
+    <thead><tr><th class="no">ល.រ</th>${GDEF.map(g=>`<th class="h-${g.k}">${g.name}<span>${g.sub}</span></th>`).join('')}</tr></thead>
+    <tbody>${body}</tbody>
+    <tfoot><tr><td class="no">សរុប</td>
+      <td class="c-work"><b>${kh(T.w)} ថ្ងៃ</b>${T.rest?`<span class="cd">ធ្វើការថ្ងៃសម្រាក ${kh(T.rest)} ថ្ងៃ</span>`:''}${T.h?`<span class="cd otc">បន្ថែមម៉ោង ${kh(T.h)} ម៉ោង</span>`:''}</td>
+      <td class="c-off"><b>${kh(T.o)} ថ្ងៃ</b></td>
+      <td class="c-leave"><b>${kh(T.l)} ថ្ងៃ</b></td></tr></tfoot></table></div>`;
+}
+$('pFrom').onchange=()=>{const f=$('pFrom').value;let t=$('pTo').value||f;if(t<f)t=f;setPeriod(f,t)};
+$('pTo').onchange=()=>{const t=$('pTo').value;let f=$('pFrom').value||t;if(f>t)f=t;setPeriod(f,t)};
+$('pMonth').onclick=()=>setPeriod(null,null);
+$('pCycle').onclick=()=>{const y=S.view.y,m=S.view.m,p=new Date(y,m-1,26);setPeriod(iso(p.getFullYear(),p.getMonth(),26),iso(y,m,25))};
+$('selMonth').onclick=()=>{periodDays().forEach(d=>{const inf=dayInfo(d);const fit=S.sec==='off'?!inf.working:inf.working;if(fit&&!pickedIn(d))pick(d,true)});render()};
+$('ssCopy').onclick=async()=>{
+  const G=groups(),name=S.staffId?S.staff[S.staffId].name:'',n=Math.max(G.work.length,G.off.length,G.leave.length);
+  const pr=periodRange();const L=['Time Sheet\t'+name+'\t'+pr.from+' – '+pr.to,['ល.រ'].concat(GDEF.map(g=>g.name)).join('\t'),[''].concat(GDEF.map(g=>g.sub)).join('\t')];
+  for(let i=0;i<n;i++)L.push([i+1,cellTxt(G.work[i]),cellTxt(G.off[i]),cellTxt(G.leave[i])].join('\t'));
+  const T=totals(G);L.push(['សរុប',T.w+' ថ្ងៃ'+(T.h?' (បន្ថែមម៉ោង '+T.h+' ម៉ោង)':''),T.o+' ថ្ងៃ',T.l+' ថ្ងៃ'].join('\t'));
+  const txt=L.join('\n');
+  try{await navigator.clipboard.writeText(txt);toast('បានចម្លង — បិទភ្ជាប់ក្នុង Excel ឬ Google Sheets')}
+  catch(_){const ta=document.createElement('textarea');ta.value=txt;ta.style.cssText='position:fixed;inset:20px;height:60%;z-index:9';document.body.appendChild(ta);ta.select();toast('ចម្លងអត្ថបទដែលបានជ្រើស');ta.addEventListener('blur',()=>ta.remove())}
+};
+// overtime
+$('otApply').onclick=async()=>{
+  if(!S.staffId)return;const h=Number($('otHours').value);if(!(h>0)){$('otHours').focus();toast('សូមបញ្ចូលចំនួនម៉ោង');return}
+  const note=$('otNote').value.trim();let n=0;
+  try{for(const ds of [...S.sel].sort()){await put('ot',pKey(S.staffId,ds),{staffId:S.staffId,date:ds,hours:h,note});n++}
+    toast('បានបញ្ចូលម៉ោងបន្ថែម '+kh(n)+' ថ្ងៃ');$('otHours').value='';$('otNote').value='';render()}catch(e){toast('រក្សាទុកមិនបាន ('+(e.code||'error')+')')}
+};
+$('otRemove').onclick=async()=>{
+  let n=0;try{for(const ds of S.sel){const k=pKey(S.staffId,ds);if(S.ot[k]){await del('ot',k);n++}}toast('បានដកម៉ោងបន្ថែម '+kh(n)+' ថ្ងៃ');render()}catch(e){toast('ដកមិនបាន')}
+};
+function usedByType(y){const u={};if(!S.staffId)return u;for(const l of Object.values(S.leaves)){if(l.staffId===S.staffId&&l.date&&l.date.startsWith(y+'-')&&dayInfo(l.date).working)u[l.type]=(u[l.type]||0)+l.amount}return u}
+function updateWarn(used){
+  used=used||usedByType(S.view.y);const t=typeOf($('leaveType').value);let msg='ថ្ងៃចុងសប្ដាហ៍ និង Day off ត្រូវរំលងដោយស្វ័យប្រវត្តិ។';
+  if(t.quota!=null&&S.staffId){const add=[...S.sel].filter(d=>dayInfo(d).working&&!leaveOf(d)).length*PART[$('leavePart').value].v;const rem=t.quota-(used[t.id]||0);
+    if(add>rem)msg='ប្រយ័ត្ន៖ លើសចំនួនកំណត់ '+kh(add-rem)+' ថ្ងៃ (សល់ '+kh(rem)+' ថ្ងៃ)។';}
+  $('leaveWarn').textContent=msg;$('leaveWarn').style.color=msg.startsWith('ប្រយ័ត្ន')?'var(--off)':'';
+}
+let toastT;function toast(t){const e=$('toast');e.textContent=t;e.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>e.hidden=true,2800)}
+
+// ---------- interaction ----------
+document.querySelectorAll('[data-sec]').forEach(b=>b.onclick=()=>{S.sec=b.dataset.sec;S.anchor=null;render()});
+$('cal').addEventListener('click',e=>{
+  const b=e.target.closest('[data-d]');if(!b)return;const ds=b.dataset.d;
+  if(S.mode==='range'){
+    if(!S.anchor){S.anchor=ds;pick(ds)}
+    else{const[a,z]=[S.anchor,ds].sort();for(let d=parse(a);d<=parse(z);d.setDate(d.getDate()+1))pick(iso(d.getFullYear(),d.getMonth(),d.getDate()),true);S.anchor=null}
+  }else{S.sel.has(ds)?S.sel.delete(ds):pick(ds)}
+  render();
+});
+function setMode(m){S.mode=m;S.anchor=null;$('modeTap').setAttribute('aria-pressed',m==='tap');$('modeRange').setAttribute('aria-pressed',m==='range')}
+$('modeTap').onclick=()=>setMode('tap');$('modeRange').onclick=()=>setMode('range');
+$('trayToggle').onclick=()=>{const t=$('tray'),mini=!t.classList.contains('mini');t.classList.toggle('mini',mini);$('trayToggle').textContent=mini?'បើកឧបករណ៍ ▴':'បង្រួម ▾';$('trayToggle').setAttribute('aria-expanded',!mini)};
+$('selClear').onclick=()=>{S.sel.clear();S.anchor=null;render()};
+$('ssClearAll').onclick=()=>{for(const k in S.selBy)S.selBy[k].clear();S.anchor=null;render()};
+function move(d){S.view.m+=d;if(S.view.m<0){S.view.m=11;S.view.y--}if(S.view.m>11){S.view.m=0;S.view.y++}render()}
+$('prev').onclick=()=>move(-1);$('next').onclick=()=>move(1);
+$('todayBtn').onclick=()=>{S.view={y:now.getFullYear(),m:now.getMonth()};render()};
+$('staffSel').onchange=e=>{S.staffId=e.target.value||null;render()};
+document.addEventListener('change',e=>{
+  if(e.target.name&&e.target.name.startsWith('scope-'))S.scope=e.target.value;
+  if(e.target.id==='offReason')$('offOther').hidden=e.target.value!=='__';
+  if(e.target.id==='workReason')$('workOther').hidden=e.target.value!=='__';
+  if(e.target.id==='leaveType'||e.target.id==='leavePart')updateWarn();
+  const q=e.target.dataset&&e.target.dataset.quota;
+  if(q){const v=e.target.value===''?null:Math.max(0,Number(e.target.value));const base=S.types[q]||{};
+    put('types',q,Object.assign({},base,{quota:v})).then(()=>{toast('បានកែចំនួនថ្ងៃកំណត់');render()}).catch(()=>toast('កែមិនបាន'));}
+});
+
+$('staffAdd').onclick=async()=>{
+  const name=$('staffNew').value.trim();if(!name){$('staffNew').focus();return}
+  const id='s'+Date.now().toString(36);
+  try{await put('staff',id,{name});S.staffId=id;$('staffNew').value='';toast('បានបន្ថែម '+name);render()}catch(e){toast('បន្ថែមមិនបាន ('+(e.code||'error')+')')}
+};
+$('staffNew').addEventListener('keydown',e=>{if(e.key==='Enter')$('staffAdd').click()});
+let delArmed=false;
+$('staffDel').onclick=async()=>{
+  if(!delArmed){delArmed=true;$('staffDel').textContent='ចុចម្ដងទៀតដើម្បីលុប';setTimeout(()=>{delArmed=false;$('staffDel').textContent='លុប'},3000);return}
+  delArmed=false;$('staffDel').textContent='លុប';const id=S.staffId;
+  try{
+    for(const[k,l]of Object.entries(S.leaves))if(l.staffId===id)await del('leaves',k);
+    for(const[k,o]of Object.entries(S.ot))if(o.staffId===id)await del('ot',k);
+    for(const[k,a]of Object.entries(S.cal))if(a.scope===id)await del('cal',k);
+    try{await del('picks',id)}catch(_){}
+    await del('staff',id);toast('បានលុបមន្ត្រី');render();
+  }catch(e){toast('លុបមិនបាន')}
+};
+
+// Section 1 & 2 — mark days
+function reason(kind){const s=$(kind+'Reason');return s.value==='__'?($(kind+'Other').value.trim()||(kind==='off'?'Day off':'Working day')):s.value}
+async function mark(kind){
+  const scopeOne=S.scope==='one'&&S.staffId;let n=0,skip=0;
+  try{
+    for(const ds of [...S.sel].sort()){
+      const id=scopeOne?pKey(S.staffId,ds):ds;
+      // compare with what the calendar says without this exact adjustment
+      const saved=S.cal[id];delete S.cal[id];const base=dayInfo(ds).working;if(saved)S.cal[id]=saved;
+      if((kind==='work')===base&&!saved){skip++;continue}
+      if((kind==='work')===base&&saved){await del('cal',id);n++;continue}
+      await put('cal',id,{kind,label:reason(kind==='work'?'work':'off'),date:ds,scope:scopeOne?S.staffId:'all'});n++;
+    }
+    toast('បានកំណត់ '+kh(n)+' ថ្ងៃជា '+(kind==='work'?'Working day':'Day off')+(skip?' · '+kh(skip)+' ថ្ងៃជាប្រភេទនេះស្រាប់':''));
+    render();
+  }catch(e){toast('រក្សាទុកមិនបាន ('+(e.code||'error')+')')}
+}
+async function unmark(kind){
+  let n=0;
+  try{for(const ds of S.sel){for(const id of [S.staffId?pKey(S.staffId,ds):null,ds]){if(id&&S.cal[id]&&S.cal[id].kind===kind){await del('cal',id);n++}}}
+    toast('បានដក '+kh(n)+' ថ្ងៃ');render()}catch(e){toast('ដកមិនបាន')}
+}
+$('offApply').onclick=()=>mark('off');$('offRemove').onclick=()=>unmark('off');
+$('workApply').onclick=()=>mark('work');$('workRemove').onclick=()=>unmark('work');
+
+// Section 3 — leave
+$('leaveApply').onclick=async()=>{
+  if(!S.staffId)return;const type=$('leaveType').value,part=$('leavePart').value,note=$('leaveNote').value.trim();
+  let n=0,skip=0;
+  try{
+    for(const ds of [...S.sel].sort()){
+      if(!dayInfo(ds).working){skip++;continue}
+      await put('leaves',pKey(S.staffId,ds),{staffId:S.staffId,date:ds,type,part,amount:PART[part].v,note});n++;
+      S.selBy.work.delete(ds);S.selBy.off.delete(ds);S.selBy.leave.add(ds);
+    }
+    toast('បានដាក់ច្បាប់ '+kh(n)+' ថ្ងៃ'+(skip?' · រំលង '+kh(skip)+' ថ្ងៃ Day off':''));
+    $('leaveNote').value='';render();
+  }catch(e){toast('រក្សាទុកមិនបាន ('+(e.code||'error')+')')}
+};
+$('leaveRemove').onclick=async()=>{
+  let n=0;try{for(const ds of S.sel){const k=pKey(S.staffId,ds);if(S.leaves[k]){await del('leaves',k);n++}}toast('បានដកច្បាប់ '+kh(n)+' ថ្ងៃ');render()}catch(e){toast('ដកមិនបាន')}
+};
+$('ntAdd').onclick=async()=>{
+  const name=$('ntName').value.trim();if(!name){$('ntName').focus();return}
+  const qv=$('ntQuota').value;const id='c'+Date.now().toString(36);
+  try{await put('types',id,{custom:true,name,short:name,quota:qv===''?null:Number(qv),work:$('ntWork').checked});
+    $('ntName').value='';$('ntQuota').value='';$('ntWork').checked=false;toast('បានបន្ថែមប្រភេទច្បាប់ '+name);render()}catch(e){toast('បន្ថែមមិនបាន')}
+};
+let delType=null;
+document.addEventListener('click',async e=>{
+  const rm=e.target.closest('[data-rm]');if(rm){try{await del('leaves',pKey(S.staffId,rm.dataset.rm));toast('បានដកច្បាប់');render()}catch(_){toast('ដកមិនបាន')}}
+  const ua=e.target.closest('[data-unadj]');if(ua){const ds=ua.dataset.unadj;const id=S.staffId&&S.cal[pKey(S.staffId,ds)]?pKey(S.staffId,ds):ds;try{await del('cal',id);toast('បានដកការកំណត់');render()}catch(_){toast('ដកមិនបាន')}}
+  const dt=e.target.closest('[data-deltype]');if(dt){const id=dt.dataset.deltype;
+    if(delType!==id){delType=id;dt.textContent='ចុចម្ដងទៀត';setTimeout(()=>{delType=null;render()},3000);return}
+    delType=null;try{await del('types',id);toast('បានលុបប្រភេទច្បាប់');render()}catch(_){toast('លុបមិនបាន')}}
+});
+
+$('copyBtn').onclick=async()=>{
+  const{y,m}=S.view,name=S.staffId?S.staff[S.staffId].name:'';
+  const lines=['Time Sheet\t'+name+'\tខែ'+MONTHS[m]+' '+y,'កាលបរិច្ឆេទ\tថ្ងៃ\tប្រភេទ\tស្ថានភាព\tតម្លៃ\tកំណត់សម្គាល់'];
+  let tw=0,tl=0;
+  for(const ds of monthDays(y,m)){
+    const inf=dayInfo(ds),lv=leaveOf(ds),wd=DOW_FULL[parse(ds).getDay()];
+    let kind,st,val='',note='';
+    if(!inf.working){kind='Day off';st=inf.label||'ចុងសប្ដាហ៍'}
+    else if(lv){const t=typeOf(lv.type);kind='ច្បាប់';st=t.short+(lv.part!=='full'?' ('+PART[lv.part].l+')':'');val=t.work?1:1-lv.amount;if(!t.work)tl+=lv.amount;note=lv.note||''}
+    else{kind='Working day';st=inf.label||'ធ្វើការ';val=1}
+    if(val!=='')tw+=val;
+    lines.push([ds,wd,kind,st,val,note].join('\t'));
+  }
+  lines.push(['សរុប','','','ថ្ងៃធ្វើការជាក់ស្ដែង',tw,'ច្បាប់ '+tl].join('\t'));
+  const txt=lines.join('\n');
+  try{await navigator.clipboard.writeText(txt);toast('បានចម្លង — បិទភ្ជាប់ក្នុង Excel ឬ Google Sheets')}
+  catch(_){const ta=document.createElement('textarea');ta.value=txt;ta.style.cssText='position:fixed;inset:20px;height:60%;z-index:9';document.body.appendChild(ta);ta.select();toast('ចម្លងអត្ថបទដែលបានជ្រើស');ta.addEventListener('blur',()=>ta.remove())}
+};
+
+// ---------- zoom (per-viewer, remembered) ----------
+const ZMIN=0.2,ZMAX=2,ZSTEP=0.1;let Z=1;
+try{const v=parseFloat(localStorage.getItem('timesheet-zoom'));if(v>=ZMIN&&v<=ZMAX)Z=v}catch(e){}
+function applyZoom(){
+  Z=Math.round(Math.min(ZMAX,Math.max(ZMIN,Z))*100)/100;
+  document.documentElement.style.setProperty('--z',Z);
+  $('zReset').textContent=kh(Math.round(Z*100))+'%';
+  $('zOut').disabled=Z<=ZMIN;$('zIn').disabled=Z>=ZMAX;
+  try{localStorage.setItem('timesheet-zoom',String(Z))}catch(e){}
+}
+$('zOut').onclick=()=>{Z-=ZSTEP;applyZoom()};
+$('zIn').onclick=()=>{Z+=ZSTEP;applyZoom()};
+$('zReset').onclick=()=>{Z=1;applyZoom()};
+document.addEventListener('keydown',e=>{if(!(e.ctrlKey||e.metaKey))return;
+  if(e.key==='='||e.key==='+'){e.preventDefault();Z+=ZSTEP;applyZoom()}
+  else if(e.key==='-'){e.preventDefault();Z-=ZSTEP;applyZoom()}
+  else if(e.key==='0'){e.preventDefault();Z=1;applyZoom()}});
+applyZoom();
+// fit the summary table into one screen (above the tool tray)
+$('ssFit').onclick=()=>{
+  const t=$('tray');if(!t.hidden&&!t.classList.contains('mini'))$('trayToggle').click();
+  for(let i=0;i<3;i++){
+    const el=$('selSummary'),h=el.getBoundingClientRect().height;
+    const avail=window.innerHeight-(t.hidden?0:t.getBoundingClientRect().height)-$('topfix').getBoundingClientRect().height-16;
+    if(!h)break;Z=Math.floor(Z*Math.min(1.6,avail/h)*100)/100;Z=Math.min(ZMAX,Math.max(ZMIN,Z));
+    document.documentElement.style.setProperty('--z',Z);
+  }
+  Z=Math.floor(Z*100)/100;document.documentElement.style.setProperty('--z',Z);
+  $('zReset').textContent=kh(Math.round(Z*100))+'%';$('zOut').disabled=Z<=ZMIN;$('zIn').disabled=Z>=ZMAX;
+  try{localStorage.setItem('timesheet-zoom',String(Z))}catch(e){}
+  $('selSummary').scrollIntoView({block:'start'});
+};
+
+// tap feedback: brief pulse on whatever was pressed (survives re-render for calendar days)
+document.addEventListener('pointerdown',e=>{
+  const b=e.target.closest('button');if(!b||b.disabled)return;
+  const key=b.dataset.d||b.id||b.dataset.sec;
+  setTimeout(()=>{const el=(b.dataset.d&&document.querySelector('[data-d="'+b.dataset.d+'"]'))||(b.dataset.sec&&document.querySelector('[data-sec="'+b.dataset.sec+'"]'))||b;
+    el.classList.remove('tap');void el.offsetWidth;el.classList.add('tap');setTimeout(()=>el.classList.remove('tap'),480)},0);
+},true);
+document.addEventListener('click',e=>{const b=e.target.closest('[data-d],[data-sec]');if(!b)return;
+  const sel=b.dataset.d?'[data-d="'+b.dataset.d+'"]':'[data-sec="'+b.dataset.sec+'"]';
+  requestAnimationFrame(()=>{const el=document.querySelector(sel);if(el){el.classList.add('tap');setTimeout(()=>el.classList.remove('tap'),480)}})});
+
+// ---------- light / dark / auto (per-viewer, remembered) ----------
+let TH='auto';try{const v=localStorage.getItem('timesheet-theme');if(v==='light'||v==='dark')TH=v}catch(e){}
+function applyTheme(){
+  if(TH==='auto')document.documentElement.removeAttribute('data-theme');else document.documentElement.setAttribute('data-theme',TH);
+  document.querySelectorAll('[data-th]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.th===TH));
+  try{localStorage.setItem('timesheet-theme',TH)}catch(e){}
+}
+document.querySelectorAll('[data-th]').forEach(b=>b.onclick=()=>{TH=b.dataset.th;applyTheme();toast(TH==='light'?'ពន្លឺ៖ ភ្លឺ':TH==='dark'?'ពន្លឺ៖ ងងឹត':'ពន្លឺ៖ ស្វ័យប្រវត្តិតាមទូរស័ព្ទ')});
+applyTheme();
+
+function flashDone(id){const b=$(id);if(!b)return;b.classList.add('done');setTimeout(()=>b.classList.remove('done'),1200)}
+['ssFit','selMonth','ssCopy','ssClearAll'].forEach(id=>{const b=$(id);if(b)b.addEventListener('click',()=>setTimeout(()=>flashDone(id),30))});
+
+// ---------- Excel (.xlsx) export: hand-built workbook, no external library ----------
+const XL=(()=>{
+  const enc=new TextEncoder();
+  const CRC=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0}return t})();
+  const crc32=b=>{let c=0xFFFFFFFF;for(let i=0;i<b.length;i++)c=CRC[(c^b[i])&255]^(c>>>8);return(c^0xFFFFFFFF)>>>0};
+  function zip(files){ // stored (no compression) zip
+    const parts=[],central=[];let off=0;
+    for(const[name,text]of files){
+      const nb=enc.encode(name),db=enc.encode(text),c=crc32(db);
+      const h=new DataView(new ArrayBuffer(30));h.setUint32(0,0x04034b50,true);h.setUint16(4,20,true);h.setUint16(6,0x0800,true);h.setUint16(8,0,true);
+      h.setUint32(14,c,true);h.setUint32(18,db.length,true);h.setUint32(22,db.length,true);h.setUint16(26,nb.length,true);
+      parts.push(new Uint8Array(h.buffer),nb,db);
+      const ch=new DataView(new ArrayBuffer(46));ch.setUint32(0,0x02014b50,true);ch.setUint16(4,20,true);ch.setUint16(6,20,true);ch.setUint16(8,0x0800,true);
+      ch.setUint32(16,c,true);ch.setUint32(20,db.length,true);ch.setUint32(24,db.length,true);ch.setUint16(28,nb.length,true);ch.setUint32(42,off,true);
+      central.push(new Uint8Array(ch.buffer),nb);off+=30+nb.length+db.length;
+    }
+    const csize=central.reduce((a,b)=>a+b.length,0);
+    const e=new DataView(new ArrayBuffer(22));e.setUint32(0,0x06054b50,true);e.setUint16(8,files.length,true);e.setUint16(10,files.length,true);e.setUint32(12,csize,true);e.setUint32(16,off,true);
+    return new Blob([...parts,...central,new Uint8Array(e.buffer)]);
+  }
+  const x=v=>String(v).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g,'');
+  const col=i=>{let s='';i++;while(i>0){const m=(i-1)%26;s=String.fromCharCode(65+m)+s;i=Math.floor((i-1)/26)}return s};
+  // style ids (see styles below)
+  const ST={title:1,sub:2,hNo:3,hWork:4,hOff:5,hLeave:6,no:7,work:8,off:9,leave:10,rest:11,tLabel:12,tWork:13,tOff:14,tLeave:15,empty:16,dHead:17,dCell:18,dNum:19,gDay:20,gDayOff:21,gW:22,gO:23,gL:24,gE:25,gTot:26,gWd:27,gOT:28,gMonth:29,rTitle:30,rWd:31,rWdOff:32,rDate:33,rDateOff:34,rName:35,rNo:36,rOne:37,rLeave:38,rRest:39,rOrg:40,rTotH:41,rTot:42};
+  const styles=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+<numFmts count="1"><numFmt numFmtId="164" formatCode="d-mmm"/></numFmts>
+<fonts count="12"><font><sz val="11"/><name val="Khmer OS Battambang"/></font><font><b/><sz val="15"/><color rgb="FF1F3A8A"/><name val="Khmer OS Battambang"/></font><font><sz val="10"/><color rgb="FF5D6779"/><name val="Khmer OS Battambang"/></font><font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Khmer OS Battambang"/></font><font><b/><sz val="12"/><color rgb="FF23409A"/><name val="Khmer OS Battambang"/></font><font><b/><sz val="12"/><color rgb="FFC0352B"/><name val="Khmer OS Battambang"/></font><font><b/><sz val="12"/><color rgb="FFA8650A"/><name val="Khmer OS Battambang"/></font><font><b/><sz val="11"/><name val="Khmer OS Battambang"/></font><font><b/><sz val="16"/><color rgb="FF1B2333"/><name val="Khmer OS Muol Light"/></font><font><sz val="10"/><color rgb="FFFF0000"/><name val="Arial"/></font><font><sz val="10"/><name val="Arial"/></font><font><sz val="12"/><name val="Khmer OS Battambang"/></font></fonts>
+<fills count="13"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>
+<fill><patternFill patternType="solid"><fgColor rgb="FF1B2333"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FF23409A"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFC0352B"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFA8650A"/></patternFill></fill>
+<fill><patternFill patternType="solid"><fgColor rgb="FFEDF1FA"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFFCEFED"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFFEF6E6"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFE1F3EC"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFE9EFF8"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFD9D9D9"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFFFFF00"/></patternFill></fill></fills>
+<borders count="3"><border/><border><left style="thin"><color rgb="FFC9D1DE"/></left><right style="thin"><color rgb="FFC9D1DE"/></right><top style="thin"><color rgb="FFC9D1DE"/></top><bottom style="thin"><color rgb="FFC9D1DE"/></bottom></border><border><left style="thin"><color rgb="FF000000"/></left><right style="thin"><color rgb="FF000000"/></right><top style="thin"><color rgb="FF000000"/></top><bottom style="thin"><color rgb="FF000000"/></bottom></border></borders>
+<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="43">
+<xf/>
+<xf fontId="1" applyFont="1"/>
+<xf fontId="2" applyFont="1"/>
+<xf fontId="3" fillId="2" borderId="1" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>
+<xf fontId="3" fillId="3" borderId="1" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center" wrapText="1"/></xf>
+<xf fontId="3" fillId="4" borderId="1" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center" wrapText="1"/></xf>
+<xf fontId="3" fillId="5" borderId="1" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center" wrapText="1"/></xf>
+<xf borderId="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="top"/></xf>
+<xf fillId="6" borderId="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf>
+<xf fillId="7" borderId="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf>
+<xf fillId="8" borderId="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf>
+<xf fillId="9" borderId="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf>
+<xf fontId="3" fillId="2" borderId="1" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
+<xf fontId="4" fillId="6" borderId="1" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center" wrapText="1"/></xf>
+<xf fontId="5" fillId="7" borderId="1" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center"/></xf>
+<xf fontId="6" fillId="8" borderId="1" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center"/></xf>
+<xf borderId="1" applyBorder="1"/>
+<xf fontId="3" fillId="2" borderId="1" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center" wrapText="1"/></xf>
+<xf borderId="1" applyBorder="1" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf>
+<xf borderId="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="top"/></xf>
+<xf fontId="7" fillId="10" borderId="1" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
+<xf fontId="5" fillId="7" borderId="1" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
+<xf fontId="4" fillId="6" borderId="1" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
+<xf fontId="5" fillId="7" borderId="1" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
+<xf fontId="6" fillId="8" borderId="1" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
+<xf borderId="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
+<xf fontId="7" fillId="10" borderId="1" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
+<xf fontId="2" fillId="10" borderId="1" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
+<xf fontId="7" fillId="9" borderId="1" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
+<xf fontId="3" fillId="2" borderId="1" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
+<xf fontId="8" applyFont="1" applyAlignment="1"><alignment horizontal="right" vertical="center"/></xf>
+<xf fontId="10" fillId="11" borderId="2" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
+<xf fontId="9" fillId="11" borderId="2" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
+<xf numFmtId="164" fontId="10" fillId="11" borderId="2" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
+<xf numFmtId="164" fontId="9" fillId="11" borderId="2" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
+<xf fontId="11" borderId="2" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center"/></xf>
+<xf fontId="10" borderId="2" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="bottom"/></xf>
+<xf fontId="10" borderId="2" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
+<xf fontId="11" fillId="12" borderId="2" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
+<xf fontId="10" fillId="9" borderId="2" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
+<xf fontId="10" fillId="11" borderId="2" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center"/></xf>
+<xf fontId="7" fillId="11" borderId="2" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>
+<xf fontId="7" borderId="2" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
+</cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`;
+  function sheet(rows,widths,merges,heights){
+    let xml='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetPr><pageSetUpPr fitToPage="1"/></sheetPr><sheetViews><sheetView workbookViewId="0"/></sheetViews><cols>'+
+      widths.map((w,i)=>`<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join('')+'</cols><sheetData>';
+    rows.forEach((r,ri)=>{const n=ri+1,h=heights&&heights[ri];xml+=`<row r="${n}"${h?` ht="${h}" customHeight="1"`:''}>`;
+      r.forEach((c,ci)=>{if(c==null)return;const ref=col(ci)+n,st=c.s?` s="${c.s}"`:'';
+        if(c.f)xml+=`<c r="${ref}"${st}><f>${x(c.f)}</f><v>${c.v}</v></c>`;
+        else if(typeof c.v==='number')xml+=`<c r="${ref}"${st}><v>${c.v}</v></c>`;
+        else if(c.v===''||c.v==null)xml+=`<c r="${ref}"${st}/>`;
+        else xml+=`<c r="${ref}"${st} t="inlineStr"><is><t xml:space="preserve">${x(c.v)}</t></is></c>`});
+      xml+='</row>'});
+    xml+='</sheetData>'+(merges&&merges.length?`<mergeCells count="${merges.length}">${merges.map(m=>`<mergeCell ref="${m}"/>`).join('')}</mergeCells>`:'')+
+      '<pageMargins left="0.5" right="0.5" top="0.6" bottom="0.6" header="0.3" footer="0.3"/><pageSetup paperSize="9" orientation="'+(widths.length>8?'landscape':'portrait')+'" fitToWidth="1" fitToHeight="0"/></worksheet>';
+    return xml;
+  }
+  function build(sheets){
+    const files=[
+      ['[Content_Types].xml','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>'+sheets.map((_,i)=>`<Override PartName="/xl/worksheets/sheet${i+1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('')+'</Types>'],
+      ['_rels/.rels','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>'],
+      ['xl/workbook.xml','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>'+sheets.map((sh,i)=>`<sheet name="${x(sh.name)}" sheetId="${i+1}" r:id="rId${i+1}"/>`).join('')+'</sheets></workbook>'],
+      ['xl/_rels/workbook.xml.rels','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'+sheets.map((_,i)=>`<Relationship Id="rId${i+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i+1}.xml"/>`).join('')+`<Relationship Id="rId${sheets.length+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`],
+      ['xl/styles.xml',styles]];
+    sheets.forEach((sh,i)=>files.push([`xl/worksheets/sheet${i+1}.xml`,sh.xml]));
+    return zip(files);
+  }
+  return{build,sheet,ST,col};
+})();
+function buildTimesheetXlsx(){
+  const G=groups(),T=totals(G),pr=periodRange(),name=S.staffId?S.staff[S.staffId].name:'';
+  const ST=XL.ST,n=Math.max(G.work.length,G.off.length,G.leave.length,1);
+  const txt=r=>r?fmt(r.ds)+' ('+DOW_FULL[parse(r.ds).getDay()]+')'+(r.detail&&!PLAIN.has(r.detail)?'\n'+r.detail:'')+(r.ot?'\n'+r.ot:''):'';
+  // sheet 1: summary in three columns, like the screen
+  const rows=[[{v:'Time Sheet'+(name?' — '+name:''),s:ST.title}],[{v:'រយៈពេល៖ '+fmt(pr.from)+' – '+fmt(pr.to),s:ST.sub}],[],
+    [{v:'ល.រ',s:ST.hNo},{v:'Working day\n'+GDEF[0].sub,s:ST.hWork},{v:'Day off\n'+GDEF[1].sub,s:ST.hOff},{v:'ច្បាប់\n'+GDEF[2].sub,s:ST.hLeave}]];
+  const heights=[26,18,8,40];
+  for(let i=0;i<n;i++){const w=G.work[i],o=G.off[i],l=G.leave[i];
+    rows.push([{v:i+1,s:ST.no},{v:w&&w.leave?'ច្បាប់ — '+w.detail:txt(w),s:w?(w.leave?ST.leave:dayInfo(w.ds).working?ST.work:ST.rest):ST.empty},{v:txt(o),s:o?ST.off:ST.empty},{v:txt(l),s:l?ST.leave:ST.empty}]);
+    const lines=Math.max(...[w,o,l].map(r=>r?txt(r).split('\n').length:1));heights.push(Math.max(20,lines*17));}
+  rows.push([{v:'សរុប',s:ST.tLabel},{v:kh(T.w)+' ថ្ងៃ'+(T.rest?'  (ធ្វើការថ្ងៃសម្រាក '+kh(T.rest)+')':'')+(T.h?'  · បន្ថែមម៉ោង '+kh(T.h)+' ម៉ោង':''),s:ST.tWork},{v:kh(T.o)+' ថ្ងៃ',s:ST.tOff},{v:kh(T.l)+' ថ្ងៃ',s:ST.tLeave}]);heights.push(26);
+  const s1=XL.sheet(rows,[7,40,38,30],['A1:D1','A2:D2'],heights);
+  // sheet 2: one row per day in the period
+  const d=[[{v:'Time Sheet លម្អិតតាមថ្ងៃ'+(name?' — '+name:''),s:ST.title}],[{v:'រយៈពេល៖ '+fmt(pr.from)+' – '+fmt(pr.to),s:ST.sub}],[],
+    ['ល.រ','កាលបរិច្ឆេទ','ថ្ងៃ','ប្រភេទ','ព័ត៌មាន','ម៉ោងបន្ថែម'].map(v=>({v,s:ST.dHead}))];
+  const kind={};for(const k of['work','off','leave'])G[k].forEach(r=>{if(!r.leave)kind[r.ds]={k,r}});
+  let i=0;
+  for(const ds of periodDays()){const e=kind[ds];if(!e)continue;i++;
+    const ot=otOf(ds);
+    d.push([{v:i,s:ST.dNum},{v:fmt(ds),s:ST.dCell},{v:DOW_FULL[parse(ds).getDay()],s:ST.dCell},{v:{work:'Working day',off:'Day off',leave:'ច្បាប់'}[e.k],s:{work:ST.work,off:ST.off,leave:ST.leave}[e.k]},{v:PLAIN.has(e.r.detail)?'':e.r.detail,s:ST.dCell},{v:ot?Number(ot.hours)||0:'',s:ST.dNum}])}
+  const s2=XL.sheet(d,[6,20,14,14,46,12],['A1:F1','A2:F2']);
+  // grid sheet: dates across, one row per category, 1 where the day belongs
+  const days=periodDays(),place={};
+  for(const k of['work','off','leave'])G[k].forEach(r=>{if(!r.leave)place[r.ds]=k});
+  const C=XL.col,first=1,last=days.length,totCol=last+1;
+  const g=[[{v:'Time Sheet'+(name?' — '+name:''),s:ST.title}],[{v:'រយៈពេល៖ '+fmt(pr.from)+' – '+fmt(pr.to),s:ST.sub}],[]];
+  // month band
+  const mRow=[{v:'',s:ST.hNo}],merges=[];
+  let start=0;days.forEach((ds,i)=>{const next=days[i+1];mRow.push({v:i===start?'ខែ'+MONTHS[parse(ds).getMonth()]+' '+kh(parse(ds).getFullYear()):'',s:ST.gMonth});
+    if(!next||next.slice(0,7)!==ds.slice(0,7)){if(i>start)merges.push(C(start+1)+'4:'+C(i+1)+'4');start=i+1}});
+  mRow.push({v:'សរុប',s:ST.tLabel});g.push(mRow);
+  const dRow=[{v:'ប្រភេទ',s:ST.hNo}],wRow=[{v:'',s:ST.hNo}];
+  days.forEach(ds=>{const inf=dayInfo(ds),rest=!inf.working;dRow.push({v:parse(ds).getDate(),s:rest?ST.gDayOff:ST.gDay});wRow.push({v:DOW_S[parse(ds).getDay()],s:rest?ST.gDayOff:ST.gWd})});
+  dRow.push({v:'',s:ST.tLabel});wRow.push({v:'',s:ST.tLabel});g.push(dRow,wRow);
+  merges.push('A1:'+C(totCol)+'1','A2:'+C(totCol)+'2',C(totCol)+'4:'+C(totCol)+'6','A5:A6');
+  const leaveAmt={};G.leave.forEach(r=>leaveAmt[r.ds]=r.amt||1);
+  const cats=[['work','Working day',ST.hWork,ST.gW],['off','Day off',ST.hOff,ST.gO],['leave','ច្បាប់',ST.hLeave,ST.gL]];
+  cats.forEach(([k,label,hs,vs])=>{const r=g.length+1,row=[{v:label,s:hs}];let sum=0;
+    days.forEach(ds=>{if(place[ds]===k){const v=k==='leave'?leaveAmt[ds]:1;sum+=v;row.push({v,s:vs})}else if(k==='work'&&place[ds]==='leave'){const a=leaveAmt[ds];if(a<1){sum+=1-a;row.push({v:1-a,s:ST.gL})}else row.push({v:'ច្បាប់',s:ST.gL})}else row.push({v:'',s:ST.gE})});
+    row.push({f:'SUM('+C(first)+r+':'+C(last)+r+')',v:sum,s:ST.gTot});g.push(row)});
+  const otDays=days.filter(ds=>otOf(ds));
+  if(otDays.length){const r=g.length+1,row=[{v:'ម៉ោងបន្ថែម',s:ST.dHead}];let sum=0;
+    days.forEach(ds=>{const o=otOf(ds);if(o){const h=Number(o.hours)||0;sum+=h;row.push({v:h,s:ST.gOT})}else row.push({v:'',s:ST.gE})});
+    row.push({f:'SUM('+C(first)+r+':'+C(last)+r+')',v:sum,s:ST.gTot});g.push(row)}
+  const gw=[14].concat(days.map(()=>4.6)).concat([8]);
+  const gh=[26,18,8,22,20,18,24,24,24,24];
+  const s0=XL.sheet(g,gw,merges,gh);
+  const sR=buildRoster();
+  return XL.build([{name:'កាលវិភាគ',xml:sR},{name:'Time Sheet',xml:s0},{name:'សង្ខេប',xml:s1},{name:'លម្អិតតាមថ្ងៃ',xml:s2}]);
+}
+window.__buildXlsx=buildTimesheetXlsx;
+let DL=null;
+$('orgName').addEventListener('change',async e=>{const name=e.target.value.trim();try{await put('settings','org',{name});if(!db){render()}toast('បានរក្សាទុកឈ្មោះអង្គភាព')}catch(_){toast('រក្សាទុកមិនបាន')}});
+$('ssXlsx').onclick=async()=>{
+  if(!DL&&!STANDALONE)return;
+  const pr=periodRange(),name=S.staffId?S.staff[S.staffId].name:'TimeSheet';
+  const fn=('TimeSheet '+name+' '+pr.from+' to '+pr.to+'.xlsx').replace(/[\\/:*?"<>|]/g,'-');
+  if(!DL){const a=document.createElement('a');a.href=URL.createObjectURL(buildTimesheetXlsx());a.download=fn;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},4000);toast('បានទាញយក Excel');return}
+  try{const r=await DL.save({filename:fn,data:buildTimesheetXlsx()});if(r&&r.status==='saved')toast('បានទាញយក Excel')}
+  catch(e){const c=e&&e.code;if(c==='declined')return;if(c==='rate_limited'){toast('សូមរង់ចាំបន្តិច រួចសាកម្ដងទៀត');return}
+    if(c==='unavailable'||c==='not_granted'||c==='capability_disabled'||c==='capability_removed'){$('ssXlsx').hidden=true}
+    toast('ទាញយក Excel មិនបាន ('+(c||'error')+')')}
+};
+(async()=>{try{DL=window.claude&&window.claude.use?await window.claude.use('downloads'):null}catch(e){DL=null}$('ssXlsx').hidden=!DL&&!STANDALONE})();
+if(STANDALONE)$('ssXlsx').hidden=false;
+
+// roster sheet: one row per officer, dates across, 1 = worked, merged yellow "ច្បាប់" for leave runs
+function placeFor(id,ds){
+  const hol=HOL[ds],wd=parse(ds).getDay(),weekend=wd===0||wd===6,adj=S.cal[id+'_'+ds]||S.cal[ds];
+  let working=!(hol||weekend);if(adj)working=adj.kind==='work';
+  const lv=S.leaves[id+'_'+ds],t=lv?typeOf(lv.type):null,ot=S.ot[id+'_'+ds];
+  const p=id===S.staffId?{work:S.selBy.work,leave:S.selBy.leave}:{work:new Set((S.picks[id]||{}).work||[]),leave:new Set((S.picks[id]||{}).leave||[])};
+  const inP=[...p.work].some(inPeriod);
+  if(lv&&!t.work&&working)return{k:'leave',amt:lv.amount,part:lv.part,type:t};
+  if(p.leave.has(ds)&&working)return{k:'leave',amt:1,part:'full',type:null};
+  if(p.work.has(ds)||ot||(lv&&t&&t.work))return{k:'work',rest:!working};
+  if(!working)return{k:'off'};
+  return inP?{k:'none'}:{k:'work'}; // officer with no picks in the period: calendar working days count
+}
+function buildRoster(){
+  const ST=XL.ST,C=XL.col,days=periodDays(),pr=periodRange();
+  const ids=Object.keys(S.staff).sort((a,b)=>(S.staff[a].name||'').localeCompare(S.staff[b].name||'','km'));
+  const d0=parse(pr.from),d1=parse(pr.to);
+  const title='កាលវិភាគធ្វើការ '+kh(d0.getDate())+' '+MONTHS[d0.getMonth()]+(d0.getFullYear()!==d1.getFullYear()?' '+kh(d0.getFullYear()):'')+' ដល់ '+kh(d1.getDate())+' '+MONTHS[d1.getMonth()]+' '+kh(d1.getFullYear());
+  const EN=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const serial=ds=>Math.round((parse(ds)-new Date(1899,11,30))/864e5);
+  const D=days.length,cW=D+2,cL=D+3,cO=D+4,lastC=cO; // 0:no 1:name 2..D+1 days, then totals
+  const rows=[],merges=[],heights=[];
+  const t=[];for(let i=0;i<=lastC;i++)t.push(null);t[0]={v:title,s:ST.rTitle};rows.push(t);heights.push(30);merges.push('A1:'+C(lastC)+'1');
+  const org=(S.settings.org&&S.settings.org.name)||'';
+  const h1=[{v:'',s:ST.rWd},{v:org||'ឈ្មោះមន្ត្រី',s:ST.rOrg}],h2=[{v:'',s:ST.rWd},{v:org?'ឈ្មោះមន្ត្រី':'',s:ST.rOrg}];
+  days.forEach(ds=>{const inf=dayInfo(ds),red=!inf.working;h1.push({v:EN[parse(ds).getDay()],s:red?ST.rWdOff:ST.rWd});h2.push({v:serial(ds),s:red?ST.rDateOff:ST.rDate})});
+  [['ថ្ងៃធ្វើការ'],['ច្បាប់'],['ថ្ងៃឈប់']].forEach(([l])=>{h1.push({v:l,s:ST.rTotH});h2.push({v:'',s:ST.rTotH})});
+  rows.push(h1,h2);heights.push(20,20);
+  for(const c of [cW,cL,cO])merges.push(C(c)+'2:'+C(c)+'3');
+  merges.push('A2:A3');
+  ids.forEach((id,i)=>{
+    const r=rows.length+1,row=[{v:i+1,s:ST.rNo},{v:S.staff[id].name||'',s:ST.rName}];
+    let leaves=0,offs=0,run=null;
+    const closeRun=end=>{if(run&&end>run)merges.push(C(run)+r+':'+C(end)+r);run=null};
+    days.forEach((ds,j)=>{const c=j+2,p=placeFor(id,ds);
+      if(p.k==='leave'&&p.part==='full'){leaves+=1;if(run===null){run=c;row.push({v:'ច្បាប់',s:ST.rLeave})}else row.push({v:'',s:ST.rLeave});return}
+      closeRun(c-1);
+      if(p.k==='leave'){leaves+=p.amt;row.push({v:1-p.amt,s:ST.rLeave})}
+      else if(p.k==='work')row.push({v:1,s:p.rest?ST.rRest:ST.rOne});
+      else{if(p.k==='off')offs++;row.push({v:'',s:ST.rOne})}
+    });
+    closeRun(D+1);
+    const range=C(2)+r+':'+C(D+1)+r;
+    let sum=0;row.slice(2).forEach(c=>{if(typeof c.v==='number')sum+=c.v});
+    row.push({f:'SUM('+range+')',v:sum,s:ST.rTot},{v:leaves,s:ST.rTot},{v:offs,s:ST.rTot});
+    rows.push(row);heights.push(30);
+  });
+  const widths=[5,24].concat(days.map(()=>7.2)).concat([10,8,8]);
+  let xml=XL.sheet(rows,widths,merges,heights);
+  // freeze name column + header rows
+  xml=xml.replace('<sheetView workbookViewId="0"/>','<sheetView workbookViewId="0"><pane xSplit="2" ySplit="3" topLeftCell="C4" activePane="bottomRight" state="frozen"/></sheetView>');
+  return xml;
+}
+
+const setTfh=()=>document.documentElement.style.setProperty('--tfh',$('topfix').getBoundingClientRect().height+'px');
+setTfh();addEventListener('resize',setTfh);if(window.ResizeObserver)new ResizeObserver(setTfh).observe($('topfix'));
+
+$('syncSave').onclick=()=>{const url=$('syncUrl').value.trim(),key=$('syncKey').value.trim();
+  if(!/^https:\/\/script\.google(usercontent)?\.com\//.test(url)){toast('តំណមិនត្រឹមត្រូវ — ត្រូវចាប់ផ្ដើមដោយ https://script.google.com/');return}
+  const first=!SYNC.url;SYNC={url,key};try{localStorage.setItem('timesheet-sync',JSON.stringify(SYNC))}catch(e){}
+  if(first){for(const k of Object.keys(COLL))for(const[id,data]of Object.entries(S[k]))OUTBOX.push({op:'set',kind:k,id,data});saveOutbox()}
+  setStatus('ទិន្នន័យធ្វើសមកាលកម្មជាមួយ Google Sheet។');toast('កំពុងភ្ជាប់…');pullSync();setInterval(pullSync,30000)};
+$('syncNow').onclick=()=>pullSync();
+let offArmed=false;$('syncOff').onclick=()=>{if(!offArmed){offArmed=true;$('syncOff').textContent='ចុចម្ដងទៀតដើម្បីផ្ដាច់';setTimeout(()=>{offArmed=false;$('syncOff').textContent='ផ្ដាច់'},3000);return}
+  SYNC={url:'',key:''};OUTBOX=[];saveOutbox();try{localStorage.removeItem('timesheet-sync')}catch(e){}syncErr='';syncUI();setStatus('រក្សាទុកតែលើឧបករណ៍នេះប៉ុណ្ណោះ។');toast('បានផ្ដាច់ពី Google Sheet')};
+
+// ---------- boot ----------
+render();
+(async()=>{
+  try{db=!STANDALONE&&window.claude&&window.claude.use?await window.claude.use('db'):null}catch(e){db=null}
+  if(db){setStatus('ទិន្នន័យរក្សាទុករួម — អ្នកដែលមានសិទ្ធិកែ មើលឃើញដូចគ្នា។');subscribe();
+    try{const u=await window.claude.use('user');const w=u&&u.can?await u.can('data.write'):null;if(w===false)noWrite()}catch(e){}}
+  else if(STANDALONE){lsLoad();S.loadedFor=null;render();syncUI();
+    setStatus(SYNC.url?'ទិន្នន័យធ្វើសមកាលកម្មជាមួយ Google Sheet។':'រក្សាទុកតែលើឧបករណ៍នេះប៉ុណ្ណោះ។');
+    if(SYNC.url){pullSync();setInterval(pullSync,30000)}
+    addEventListener('online',pullSync);document.addEventListener('visibilitychange',()=>{if(!document.hidden)pullSync()});}
+  else{lsLoad();S.loadedFor=null;setStatus('រក្សាទុកតែលើឧបករណ៍នេះប៉ុណ្ណោះ។');render();
+    banner('warn','<b>ទិន្នន័យនេះរក្សាទុកតែលើឧបករណ៍នេះប៉ុណ្ណោះ</b> ហើយ admin មើលមិនឃើញទេ។ សូមចូលគណនី Claude របស់អ្នក ហើយបើកតំណដែល admin ចែករំលែក ដើម្បីឱ្យទិន្នន័យទៅដល់ admin។')}
+})();
+})();
+</script>
+
+<script>
+if('serviceWorker' in navigator){addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}))}
+</script>
+</body>
+</html>
